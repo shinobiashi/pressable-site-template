@@ -195,7 +195,19 @@ def line_rules(repo: Path, current: Identity, new: Identity):
     theme = repo / "wp-content" / "themes" / current.theme_slug
     plugin = repo / "wp-content" / "plugins" / current.plugin_slug
     site = new.site_name
+
+    def snake_prefixes(match: re.Match) -> str:
+        # The PHPCS prefixes are written without a trailing "_", so a hyphen-less old slug
+        # ("shop") is replaced with the slug form; prefixes must be the snake form.
+        body = match.group(2)
+        for slug in (new.theme_slug, new.plugin_slug):
+            dash, snake, _ = slug_forms(slug)
+            body = body.replace(f'value="{dash}"', f'value="{snake}"')
+        return match.group(1) + body + match.group(3)
+
     return [
+        (repo / ".phpcs.xml.dist", "PHP 接頭辞（.phpcs.xml.dist の prefixes）",
+         re.compile(r'(<property name="prefixes" type="array">)(.*?)(</property>)', re.S), snake_prefixes),
         (theme / "style.css", "テーマ名（style.css の Theme Name）",
          re.compile(r"^Theme Name:.*$", re.M), f"Theme Name: {new.theme_name}"),
         (theme / "style.css", "テーマの説明文のサイト名（style.css の Description）",

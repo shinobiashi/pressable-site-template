@@ -118,6 +118,11 @@ class RenameScenarios(unittest.TestCase):
         self.assertIn("'loop_shop_per_page'", functions)
         self.assertIn("acme_theme_products_per_page", functions)
         self.assertIn(".acme-theme-shop-layout", self.read("wp-content/themes/acme-theme/assets/css/theme.css"))
+        # PHPCS keeps the text domain in the slug form and the prefix in the snake form.
+        phpcs = self.read(".phpcs.xml.dist")
+        self.assertIn('<element value="acme-theme"/>', phpcs)
+        self.assertIn('<element value="acme_theme"/>', phpcs)
+        self.assertIn('<element value="acme_tools"/>', phpcs)
 
     def test_invalid_input_changes_nothing(self) -> None:
         for args in (("same-slug", "same-slug"), ("Bad_Slug", "sample-store-functions"), ("wp-store", "sample-store-functions")):

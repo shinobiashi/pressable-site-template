@@ -9,3 +9,6 @@
 | 2026-10-18 | initial R1-L7 | Low | wp-content/themes/pressable-theme/parts/footer.html:14 | お知らせのリンクが `/category/news/` の固定 URL。カテゴリーのベースを変えるとフッターだけ 404 になる。前提としてテーマの CLAUDE.md に明記するか、ナビゲーションブロックにする | 未起票 |
 | 2026-10-18 | initial R1-L8 | Low | bin/studio-pull.sh | Git の作業ツリーでないフォルダで実行すると、未コミットの変更の確認が黙って通る。`git rev-parse --is-inside-work-tree` で先に確かめるとよい | 未起票 |
 | 2026-10-18 | initial R1-L9 | Low（要判断） | includes/blocks.php:3 ほか | グローバルルール「コードは英語」に対し、コメントと docblock が日本語（okatora-shop と同じ書き方）。コメントがルールの対象かをユーザーが判断する | 未起票 |
+| 2026-10-18 | initial R2-2 | Low | bin/studio-prepare.sh:59 | `mail_function_file="$(studio_wp eval …)"` は `set -e` の下で、eval が失敗するとその場で終了し、警告も `studio status` も出ない。`\|\| mail_function_file=""` を付けると警告まで進む | 未起票 |
+| 2026-10-18 | initial R2-3 | Low | .claude/skills/rename-site/scripts/rename.py（TOKEN_START） | 直前が `-` のときは置換しないため、`wp-block-<プラグインスラッグ>-copyright` のような生成されるクラス名をファイルに書くと置き換わらず、残りチェックにも出ない（今は該当なし）。SKILL.md に制約として書く | 未起票 |
+| 2026-10-18 | initial R2-4 | Low（要判断） | .claude/skills/rename-site/scripts/rename.py | 旧スラッグがハイフンの無い一般語（`store` など）だと、後ろ側の境界が無いため一般の単語まで置き換わる（`edit.js` の `import { store as coreStore }` など）。スラッグにハイフンを必須にすれば、この種の問題をまとめて防げる | 未起票 |
