@@ -58,6 +58,9 @@ cd wp-content/plugins/pressable-plugin
 nvm use && npm ci
 npm run build        # npm run start でウォッチ
 npm run lint:js
+
+# rename-site スキルのシナリオテスト（rename.py を変更したとき。リポジトリ直下）
+python3 -I .claude/skills/rename-site/scripts/test_rename.py
 ```
 
 ## ローカル環境（WordPress Studio）

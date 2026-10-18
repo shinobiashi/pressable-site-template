@@ -34,6 +34,9 @@ SLUG_RE = re.compile(r"^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$")
 # Names are written into PHP/CSS comments, JSON strings and a shell variable.
 FORBIDDEN_IN_NAMES = ['"', "\\", "$", "`", "*/", "\n", "\r"]
 SKIP_DIR_NAMES = {".git", "node_modules", "vendor"}
+# A slug only starts a token when it is not preceded by a letter, digit, "_" or "-":
+# protects "loop_shop_per_page" and the class "<theme>-shop-layout" when the slug is "shop".
+TOKEN_START = r"(?<![A-Za-z0-9_-])"
 
 
 class RenameError(Exception):
@@ -222,18 +225,38 @@ def line_rules(repo: Path, current: Identity, new: Identity):
     ]
 
 
+def token_pattern(tokens) -> re.Pattern:
+    """Longest first, and only where a slug can start (never right after a letter, digit, "_" or "-")."""
+    alternation = "|".join(re.escape(t) for t in sorted(set(tokens), key=len, reverse=True))
+    return re.compile(rf"{TOKEN_START}(?:{alternation})")
+
+
+def token_rules(current: Identity, new: Identity) -> dict:
+    """Old token -> replacement function, for both slugs.
+
+    Unchanged slugs are included and map to themselves, so a renamed slug never matches
+    inside them (renaming theme "sample-store" must not touch plugin "sample-store-functions").
+    """
+    rules = {}
+    for old_slug, new_slug in ((current.theme_slug, new.theme_slug), (current.plugin_slug, new.plugin_slug)):
+        old_dash, old_snake, old_upper = slug_forms(old_slug)
+        new_dash, new_snake, new_upper = slug_forms(new_slug)
+        if old_dash == old_snake:
+            # Without a hyphen, "shop" is both the slug and the PHP prefix; "shop_" is the prefix.
+            rules[old_dash] = lambda m, d=new_dash, s=new_snake: s if m.string[m.end():m.end() + 1] == "_" else d
+        else:
+            rules[old_dash] = lambda m, d=new_dash: d
+            rules[old_snake] = lambda m, s=new_snake: s
+        rules[old_upper] = lambda m, u=new_upper: u
+    return rules
+
+
 def build_plan(repo: Path, current: Identity, new: Identity) -> Plan:
     plan = Plan()
 
-    mapping = {}
-    for old, repl in zip(slug_forms(current.theme_slug), slug_forms(new.theme_slug)):
-        if old != repl:
-            mapping[old] = repl
-    for old, repl in zip(slug_forms(current.plugin_slug), slug_forms(new.plugin_slug)):
-        if old != repl:
-            mapping[old] = repl
-    # Longest first, single pass: a replacement is never replaced again.
-    token_re = re.compile("|".join(re.escape(k) for k in sorted(mapping, key=len, reverse=True))) if mapping else None
+    rules = token_rules(current, new)
+    # Single pass, so a replacement is never replaced again.
+    token_re = token_pattern(rules)
 
     texts: dict[Path, str] = {}
     for path in iter_repo_files(repo):
@@ -241,11 +264,18 @@ def build_plan(repo: Path, current: Identity, new: Identity) -> Plan:
         if text is None:
             continue
         texts[path] = text
-        if token_re:
-            new_text, count = token_re.subn(lambda m: mapping[m.group(0)], text)
-            if count:
-                plan.contents[path] = (text, new_text)
-                plan.token_counts[path] = count
+        changed = 0
+
+        def replace(match: re.Match) -> str:
+            nonlocal changed
+            replacement = rules[match.group(0)](match)
+            changed += replacement != match.group(0)
+            return replacement
+
+        new_text = token_re.sub(replace, text)
+        if changed:
+            plan.contents[path] = (text, new_text)
+            plan.token_counts[path] = changed
 
     for path, label, pattern, replacement in line_rules(repo, current, new):
         if path not in texts:
@@ -293,12 +323,17 @@ def apply_plan(repo: Path, plan: Plan) -> None:
 
 def post_checks(repo: Path, current: Identity, new: Identity) -> list[str]:
     problems = []
+    current_tokens = slug_forms(new.theme_slug) + slug_forms(new.plugin_slug)
     old_tokens = []
     if current.theme_slug != new.theme_slug:
         old_tokens += slug_forms(current.theme_slug)
     if current.plugin_slug != new.plugin_slug:
         old_tokens += slug_forms(current.plugin_slug)
-    leftover_re = re.compile("|".join(re.escape(t) for t in old_tokens)) if old_tokens else None
+    old_tokens = [t for t in old_tokens if t not in current_tokens]
+    # Hide the current names first, so an old slug inside a new one ("pressable-theme" in
+    # "pressable-theme-jp") is not reported as a leftover.
+    mask_re = token_pattern(current_tokens)
+    leftover_re = token_pattern(old_tokens) if old_tokens else None
 
     php = shutil.which("php")
     for path in iter_repo_files(repo):
@@ -306,7 +341,7 @@ def post_checks(repo: Path, current: Identity, new: Identity) -> list[str]:
         if text is None:
             continue
         rel = path.relative_to(repo)
-        if leftover_re and leftover_re.search(text):
+        if leftover_re and leftover_re.search(mask_re.sub("\0", text)):
             problems.append(f"古い名前が残っています: {rel}")
         if path.suffix == ".json":
             try:

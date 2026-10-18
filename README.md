@@ -207,7 +207,7 @@ npm run build            # src/ → build/。開発中は npm run start
 npm run lint:js
 ```
 
-Pressable はデプロイ時にビルドしないため、**`build/` はコミットします**。CI（`.github/workflows/lint.yml`）が PHPCS・ESLint と build/ の更新漏れをチェックします。
+Pressable はデプロイ時にビルドしないため、**`build/` はコミットします**。CI（`.github/workflows/lint.yml`）が PHPCS・ESLint・build/ の更新漏れ・rename-site スキルのシナリオテスト（`python3 -I .claude/skills/rename-site/scripts/test_rename.py`）をチェックします。
 
 ## Pressable へのデプロイ設定
 

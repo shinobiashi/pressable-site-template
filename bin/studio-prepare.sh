@@ -54,8 +54,12 @@ studio_wp theme activate "$THEME_SLUG"
 studio_wp plugin activate "$PLUGIN_SLUG"
 studio_wp rewrite flush
 
-if ! studio_wp eval 'echo has_filter( "pre_wp_mail" ) ? "on" : "off";' | grep -qx on; then
-	echo "警告: local-mail-guard が働いていません。このサイトからメールが送信される可能性があります。" >&2
+# 使われている wp_mail() がどのファイルで定義されているかを見る（フィルターが登録されているかだけでは、
+# wp_mail() を自前で定義するプラグインがあると送信を止められないため）。
+mail_function_file="$(studio_wp eval 'echo ( new ReflectionFunction( "wp_mail" ) )->getFileName();')"
+if [[ "$mail_function_file" != *"/wp-content/mu-plugins/local-mail-guard.php"* ]]; then
+	echo "警告: local-mail-guard がメール送信を止められていません。このサイトからメールが送信される可能性があります。" >&2
+	echo "      使われている wp_mail(): ${mail_function_file:-（取得できませんでした）}" >&2
 	echo "      wp-content/mu-plugins/local-mail-guard.php があるか、環境タイプが local かを確認してください。" >&2
 fi
 

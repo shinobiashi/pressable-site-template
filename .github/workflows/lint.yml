@@ -25,6 +25,14 @@ jobs:
 
       - run: composer lint
 
+  rename-skill:
+    name: rename-site skill tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - run: python3 -I .claude/skills/rename-site/scripts/test_rename.py
+
   blocks:
     name: Blocks (lint and build check)
     runs-on: ubuntu-latest
