@@ -1,0 +1,188 @@
+/* Pressable Theme — 補助スタイル（theme.json で表現できない装飾のみ） */
+
+/* ---- 汎用カード ---- */
+.pressable-theme-card {
+	border-radius: var(--wp--custom--radius--card, 12px);
+	overflow: hidden;
+	box-shadow: 0 6px 18px rgba(29, 35, 39, 0.08);
+}
+
+/* ---- 角丸画像 ---- */
+.pressable-theme-rounded img {
+	border-radius: var(--wp--custom--radius--card, 12px);
+}
+
+/* ---- ヘッダー ---- */
+.pressable-theme-header-search .wp-block-search__input {
+	border-radius: var(--wp--custom--radius--button, 6px);
+	border-color: var(--wp--preset--color--line);
+	background: var(--wp--preset--color--surface);
+	font-size: var(--wp--preset--font-size--small);
+}
+@media (max-width: 781px) {
+	.pressable-theme-header-search {
+		display: none;
+	}
+}
+
+/* ---- お知らせ一覧（トップ） ---- */
+.pressable-theme-news .wp-block-post-template {
+	border-top: 1px solid var(--wp--preset--color--line);
+}
+.pressable-theme-news .wp-block-post-template > li {
+	margin-block-start: 0;
+	padding: var(--wp--preset--spacing--30) 0;
+	border-bottom: 1px solid var(--wp--preset--color--line);
+}
+.pressable-theme-news .wp-block-post-date {
+	flex-shrink: 0;
+}
+.pressable-theme-news .wp-block-post-title {
+	font-family: var(--wp--preset--font-family--body);
+	font-weight: 500;
+	line-height: 1.6;
+}
+.pressable-theme-news .wp-block-post-title a {
+	color: var(--wp--preset--color--contrast);
+	text-decoration: none;
+}
+.pressable-theme-news .wp-block-post-title a:hover {
+	color: var(--wp--preset--color--primary);
+}
+@media (max-width: 781px) {
+	/* スマホでは日付の下にタイトルを置く */
+	.pressable-theme-news .pressable-theme-news-item {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 4px;
+	}
+}
+
+/* ---- フッター ---- */
+.pressable-theme-footer .wp-block-site-title a {
+	color: var(--wp--preset--color--band-contrast);
+	text-decoration: none;
+}
+.pressable-theme-footer-links {
+	list-style: none;
+	padding-left: 0;
+}
+.pressable-theme-footer-links li {
+	margin-bottom: 10px;
+}
+.pressable-theme-footer-links a {
+	color: var(--wp--preset--color--band-muted);
+	text-decoration: none;
+}
+.pressable-theme-footer-links a:hover {
+	color: var(--wp--preset--color--band-contrast);
+}
+
+/* ---- 会社概要テーブル ---- */
+.pressable-theme-company-table th {
+	width: 8em;
+	text-align: left;
+	color: var(--wp--preset--color--body);
+	font-weight: 700;
+	border-color: var(--wp--preset--color--line);
+}
+.pressable-theme-company-table td {
+	border-color: var(--wp--preset--color--line);
+}
+
+/* ==== 以下 WooCommerce（ショップでないサイトでは該当要素が無く、効かないだけ） ==== */
+
+/* ---- 商品コレクションのカード化 ---- */
+.pressable-theme-products .wc-block-product {
+	background: var(--wp--preset--color--surface);
+	border-radius: var(--wp--custom--radius--card, 12px);
+	overflow: hidden;
+	box-shadow: 0 6px 18px rgba(29, 35, 39, 0.08);
+	padding-bottom: 15px;
+}
+.pressable-theme-products .wc-block-product > *:not([class*="product-image"]) {
+	margin-left: 15px;
+	margin-right: 15px;
+}
+.pressable-theme-products .wc-block-components-product-image {
+	margin-bottom: 12px;
+}
+.pressable-theme-products .wc-block-components-product-image img {
+	aspect-ratio: 1 / 1;
+	object-fit: cover;
+	background: var(--wp--preset--color--image-bg);
+}
+.pressable-theme-products .pressable-theme-product-name {
+	font-weight: 600;
+	line-height: 1.5;
+}
+.pressable-theme-products .pressable-theme-product-name a {
+	color: var(--wp--preset--color--contrast);
+	text-decoration: none;
+}
+.pressable-theme-products .pressable-theme-product-name a:hover {
+	color: var(--wp--preset--color--primary);
+}
+.pressable-theme-products .pressable-theme-product-price {
+	color: var(--wp--preset--color--primary);
+	font-weight: 700;
+}
+
+/* ---- 商品一覧サイドバー（カテゴリフィルタ） ---- */
+.pressable-theme-filter .wc-block-product-categories-list {
+	list-style: none;
+	padding-left: 0;
+	font-size: var(--wp--preset--font-size--small);
+}
+.pressable-theme-filter .wc-block-product-categories-list li {
+	padding: 8px 10px;
+	border-radius: var(--wp--custom--radius--button, 6px);
+}
+.pressable-theme-filter .wc-block-product-categories-list li:hover {
+	background: var(--wp--preset--color--image-bg);
+}
+.pressable-theme-filter .wc-block-product-categories-list a {
+	color: var(--wp--preset--color--contrast);
+	text-decoration: none;
+	font-weight: 500;
+}
+.pressable-theme-filter .wc-block-product-categories-list-item-count {
+	opacity: 0.55;
+	margin-left: 6px;
+}
+@media (max-width: 781px) {
+	/* スマホではサイドバーを横並びチップに */
+	.pressable-theme-shop-layout {
+		flex-wrap: wrap !important;
+	}
+	.pressable-theme-filter .wc-block-product-categories-list {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+	.pressable-theme-filter .wc-block-product-categories-list li {
+		border: 1px solid var(--wp--preset--color--line);
+		border-radius: 20px;
+		padding: 6px 14px;
+		white-space: nowrap;
+	}
+}
+
+/* ---- ミニカートのバッジ色 ---- */
+.wc-block-mini-cart__badge {
+	background: var(--wp--preset--color--primary);
+	color: var(--wp--preset--color--on-primary);
+}
+
+/* ---- カート・チェックアウト ----
+ * WooCommerce のテンプレート（page-cart / page-checkout と checkout-header）には余白がなく、
+ * 画面端に接したり横スクロールが出たりするため、固定ページ（templates/page.html）と同じ余白を付ける。
+ * テーマのヘッダー（parts/header.html）は余白をインラインで指定しているため影響しない。 */
+body.woocommerce-cart .wp-site-blocks > main,
+body.woocommerce-checkout .wp-site-blocks > main {
+	padding-right: var(--wp--preset--spacing--40);
+	padding-left: var(--wp--preset--spacing--40);
+}
+body.woocommerce-checkout .wp-site-blocks > header > .wp-block-group {
+	padding: var(--wp--preset--spacing--30) var(--wp--preset--spacing--40);
+}

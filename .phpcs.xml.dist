@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<ruleset name="Pressable Site Template">
+	<description>WordPress Coding Standards for pressable-theme and pressable-plugin.</description>
+
+	<file>wp-content/themes/pressable-theme</file>
+	<file>wp-content/plugins/pressable-plugin</file>
+	<file>wp-content/mu-plugins/local-mail-guard.php</file>
+
+	<!-- build/ is generated from src/ by npm run build. -->
+	<exclude-pattern>*/build/*</exclude-pattern>
+	<exclude-pattern>*/node_modules/*</exclude-pattern>
+	<exclude-pattern>*/vendor/*</exclude-pattern>
+
+	<arg name="extensions" value="php"/>
+	<arg name="cache" value=".phpcs-cache"/>
+	<arg name="parallel" value="8"/>
+	<arg name="colors"/>
+	<arg value="sp"/>
+
+	<config name="testVersion" value="8.1-"/>
+	<config name="minimum_wp_version" value="6.8"/>
+
+	<rule ref="WordPress"/>
+	<rule ref="PHPCompatibilityWP"/>
+
+	<rule ref="WordPress.WP.I18n">
+		<properties>
+			<property name="text_domain" type="array">
+				<element value="pressable-theme"/>
+				<element value="pressable-plugin"/>
+			</property>
+		</properties>
+	</rule>
+
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+		<properties>
+			<property name="prefixes" type="array">
+				<element value="pressable_theme"/>
+				<element value="pressable_plugin"/>
+			</property>
+		</properties>
+	</rule>
+</ruleset>

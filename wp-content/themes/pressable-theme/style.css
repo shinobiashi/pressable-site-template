@@ -1,0 +1,15 @@
+/*
+Theme Name: Pressable Theme
+Author: Shinobiashi INC.
+Description: Pressable で構築するサイト用のブロックテーマ（FSE）の雛形です。見た目（テンプレート・パターン・デザイントークン）を担当し、機能は pressable-plugin が担当します。WooCommerce のブロックテンプレートにも対応しています。
+Version: 1.0.0
+Requires at least: 6.8
+Tested up to: 7.1
+Requires PHP: 8.3
+Text Domain: pressable-theme
+Update URI: false
+License: GNU General Public License v2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
+Tags: block-patterns, full-site-editing, e-commerce
+*/
+/* スタイルは theme.json と assets/css/theme.css で管理しています */
