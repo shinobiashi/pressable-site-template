@@ -1,0 +1,40 @@
+# The repository root is a WordPress Studio site folder (and Pressable's /htdocs).
+# Everything WordPress and Studio put here (core, wp-config.php, the SQLite database,
+# uploads, other plugins and themes, Studio's AGENTS.md / STUDIO.md) is ignored, and only
+# this repository's own files are tracked. Add a "!" line when you add a tracked file at
+# the root or another tracked plugin/theme.
+/*
+!/.claude/
+/.claude/*
+!/.claude/skills/
+/.claude/skills/*
+!/.claude/skills/rename-site/
+!/.github/
+!/bin/
+!/docs/
+!/.deployignore
+!/.editorconfig
+!/.gitignore
+!/.phpcs.xml.dist
+!/CLAUDE.md
+!/README.md
+!/composer.json
+!/composer.lock
+
+!/wp-content/
+/wp-content/*
+!/wp-content/themes/
+!/wp-content/plugins/
+!/wp-content/mu-plugins/
+/wp-content/themes/*
+!/wp-content/themes/pressable-theme/
+/wp-content/plugins/*
+!/wp-content/plugins/pressable-plugin/
+/wp-content/mu-plugins/*
+!/wp-content/mu-plugins/local-mail-guard.php
+
+# Inside the tracked directories
+.DS_Store
+Thumbs.db
+node_modules/
+*.log
