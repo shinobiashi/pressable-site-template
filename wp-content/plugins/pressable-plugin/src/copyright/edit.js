@@ -3,6 +3,7 @@ import { useBlockProps, InspectorControls } from '@wordpress/block-editor';
 import { PanelBody, TextControl } from '@wordpress/components';
 import { useSelect } from '@wordpress/data';
 import { store as coreStore } from '@wordpress/core-data';
+import { date } from '@wordpress/date';
 
 /**
  * エディター上のプレビュー。表示内容の組み立ては render.php と揃えること。
@@ -23,7 +24,8 @@ export default function Edit( { attributes, setAttributes } ) {
 		[]
 	);
 
-	const thisYear = new Date().getFullYear();
+	// render.php の wp_date() と同じく、ブラウザーではなくサイトのタイムゾーンで今年を求める。
+	const thisYear = Number( date( 'Y' ) );
 	const years =
 		startYear && startYear < thisYear
 			? `${ startYear }–${ thisYear }`
