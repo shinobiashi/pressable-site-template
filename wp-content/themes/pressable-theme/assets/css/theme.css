@@ -19,9 +19,36 @@
 	background: var(--wp--preset--color--surface);
 	font-size: var(--wp--preset--font-size--small);
 }
+/* スマホでは検索欄の代わりに、タップで入力欄が開くアイコンだけの検索（ボタンのみ）を出す */
+.pressable-theme-header-search-mobile {
+	display: none;
+}
 @media (max-width: 781px) {
 	.pressable-theme-header-search {
 		display: none;
+	}
+	.pressable-theme-header-search-mobile {
+		display: block;
+	}
+	/* アイコンだけのボタンなので余白を詰める */
+	.pressable-theme-header-search-mobile .wp-block-search__button {
+		padding: 0.5em;
+	}
+	/* 開いた入力欄はボタンの左に重ねて表示し、ロゴやメニューを押し出さない */
+	.pressable-theme-header-search-mobile .wp-block-search__inside-wrapper {
+		position: relative;
+	}
+	.pressable-theme-header-search-mobile:not(.wp-block-search__searchfield-hidden) .wp-block-search__input {
+		position: absolute;
+		top: 0;
+		right: calc(100% + 6px);
+		bottom: 0;
+		z-index: 10;
+		width: min(15rem, calc(100vw - 6rem));
+		border: 1px solid var(--wp--preset--color--line);
+		border-radius: var(--wp--custom--radius--button, 6px);
+		background: var(--wp--preset--color--surface);
+		font-size: var(--wp--preset--font-size--small);
 	}
 }
 
