@@ -26,9 +26,11 @@ export default function Edit( { attributes, setAttributes } ) {
 
 	// render.php の wp_date() と同じく、ブラウザーではなくサイトのタイムゾーンで今年を求める。
 	const thisYear = Number( date( 'Y' ) );
+	// render.php の absint() と同じく、開始年は 0 以上の整数として扱う（-2020 は 2020）。
+	const start = Math.abs( Math.trunc( Number( startYear ) || 0 ) );
 	const years =
-		startYear && startYear < thisYear
-			? `${ startYear }–${ thisYear }`
+		start && start < thisYear
+			? `${ start }–${ thisYear }`
 			: String( thisYear );
 	const text = [ '©', years, holder.trim() || siteTitle, suffix.trim() ]
 		.filter( Boolean )
