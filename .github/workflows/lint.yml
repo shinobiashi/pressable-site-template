@@ -1,0 +1,64 @@
+name: Lint
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  phpcs:
+    name: PHPCS
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+          coverage: none
+
+      - run: composer install --no-interaction --no-progress
+
+      - run: composer lint
+
+  rename-skill:
+    name: rename-site skill tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - run: python3 -I .claude/skills/rename-site/scripts/test_rename.py
+
+  blocks:
+    name: Blocks (lint and build check)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: wp-content/plugins/pressable-plugin
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: wp-content/plugins/pressable-plugin/.nvmrc
+          cache: npm
+          cache-dependency-path: wp-content/plugins/pressable-plugin/package-lock.json
+
+      - run: npm ci
+
+      - run: npm run lint:js
+
+      - run: npm run build
+
+      # Pressable does not build on deploy, so the committed build/ must match src/.
+      - name: Check that build/ is committed and up to date
+        run: |
+          if [ -n "$(git status --porcelain -- build)" ]; then
+            git status --porcelain -- build
+            echo "::error::build/ is out of date. Run 'npm run build' and commit the result."
+            exit 1
+          fi

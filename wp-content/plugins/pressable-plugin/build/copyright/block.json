@@ -1,0 +1,46 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "pressable-plugin/copyright",
+  "version": "1.0.0",
+  "title": "コピーライト",
+  "category": "theme",
+  "icon": "shield",
+  "description": "「© 開始年–今年 権利者名」を表示します。年は表示のたびに自動で更新されます。",
+  "keywords": [
+    "copyright",
+    "コピーライト",
+    "著作権"
+  ],
+  "textdomain": "pressable-plugin",
+  "attributes": {
+    "startYear": {
+      "type": "integer"
+    },
+    "holder": {
+      "type": "string",
+      "default": ""
+    },
+    "suffix": {
+      "type": "string",
+      "default": "All Rights Reserved."
+    }
+  },
+  "supports": {
+    "html": false,
+    "color": {
+      "text": true,
+      "background": false,
+      "link": false
+    },
+    "spacing": {
+      "margin": true
+    },
+    "typography": {
+      "fontSize": true,
+      "textAlign": true
+    }
+  },
+  "editorScript": "file:./index.js",
+  "render": "file:./render.php"
+}

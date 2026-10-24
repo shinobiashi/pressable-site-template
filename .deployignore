@@ -1,0 +1,55 @@
+# Pressable GitHub deployment rules (gitignore-like syntax).
+#
+# Pressable deploys with "Sync-As-Is": files on the server that are NOT in this
+# repository are DELETED from the destination path. This file assumes the
+# deployment is configured with BOTH "Repository Subdirectory" and
+# "Destination Path" left blank (repository root = /htdocs).
+#
+# Matched paths are neither deployed nor deleted on the server, so the allowlist
+# below limits the deployment to this repository's theme and plugin, and keeps
+# everything else on the server (WooCommerce and other plugins, languages,
+# mu-plugins, files placed via SFTP, etc.) untouched.
+#
+# When you commit another theme or plugin to this repository, add a "!" line for
+# it in the matching block below.
+
+# ---- Allowlist: deploy only our theme and plugin ----
+# Everything directly under the site root except wp-content/.
+/*
+!wp-content/
+
+# The wp-content/ lines follow the style of Pressable's documented examples
+# (no leading slash; the slash in the middle anchors them to the root), so they
+# keep protecting the server even if a leading "/" is not supported.
+wp-content/*
+!wp-content/themes/
+!wp-content/plugins/
+
+wp-content/themes/*
+!wp-content/themes/pressable-theme/
+
+wp-content/plugins/*
+!wp-content/plugins/pressable-plugin/
+
+# ---- Development files (never deployed) ----
+# Repository root files are already covered by "/*"; they are listed again so
+# they are not published even if "/*" is not supported.
+.DS_Store
+**/*.log
+.claude/
+.deployignore
+.editorconfig
+.github/
+.gitignore
+.phpcs.xml.dist
+CLAUDE.md
+README.md
+bin/*
+composer.json
+composer.lock
+docs/
+node_modules/
+package.json
+package-lock.json
+.nvmrc
+wp-content/plugins/pressable-plugin/src/

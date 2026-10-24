@@ -1,0 +1,23 @@
+{
+	"name": "pressable-plugin",
+	"version": "1.0.0",
+	"private": true,
+	"description": "Pressable Plugin の独自ブロックのビルド環境",
+	"license": "GPL-2.0-or-later",
+	"scripts": {
+		"build": "wp-scripts build --webpack-copy-php --blocks-manifest",
+		"start": "wp-scripts start --webpack-copy-php --blocks-manifest",
+		"lint:js": "wp-scripts lint-js src",
+		"format": "wp-scripts format src"
+	},
+	"devDependencies": {
+		"@wordpress/block-editor": "^18.1.0",
+		"@wordpress/blocks": "^16.2.0",
+		"@wordpress/components": "^42.0.0",
+		"@wordpress/core-data": "^8.2.0",
+		"@wordpress/data": "^10.57.0",
+		"@wordpress/date": "^5.57.0",
+		"@wordpress/i18n": "^6.30.0",
+		"@wordpress/scripts": "^36.1.0"
+	}
+}

@@ -1,0 +1,25 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/theme.json",
+	"version": 3,
+	"title": "ダーク",
+	"settings": {
+		"color": {
+			"palette": [
+				{ "slug": "base", "color": "#16191c", "name": "ベース（背景）" },
+				{ "slug": "surface", "color": "#20252a", "name": "カード" },
+				{ "slug": "contrast", "color": "#f0f0f1", "name": "見出し・本文" },
+				{ "slug": "body", "color": "#c3c4c7", "name": "補足本文" },
+				{ "slug": "primary", "color": "#72aee6", "name": "プライマリ" },
+				{ "slug": "primary-dark", "color": "#9ec2e6", "name": "プライマリ（濃）" },
+				{ "slug": "on-primary", "color": "#16191c", "name": "プライマリ上の文字" },
+				{ "slug": "accent", "color": "#f0b849", "name": "アクセント" },
+				{ "slug": "band", "color": "#0e1113", "name": "帯（濃色セクション）" },
+				{ "slug": "band-contrast", "color": "#f0f0f1", "name": "帯テキスト" },
+				{ "slug": "band-muted", "color": "#a7aaad", "name": "帯サブテキスト" },
+				{ "slug": "line", "color": "#3c434a", "name": "罫線" },
+				{ "slug": "image-bg", "color": "#2c3338", "name": "画像下地" },
+				{ "slug": "footer", "color": "#0b0d0e", "name": "フッター" }
+			]
+		}
+	}
+}
