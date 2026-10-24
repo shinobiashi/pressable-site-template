@@ -36,7 +36,7 @@ pressable-plugin/
 ## 独自ブロック
 
 - `src/<ブロック名>/block.json` を置けば `npm run build` が自動で拾い、`build/blocks-manifest.php` に載る。PHP 側の登録コードを足す必要はない。
-- 表示はサーバーサイドレンダリング（`render.php`・`save: () => null`）を基本にする。エディターのプレビューは edit.js でクライアント側に組み立て、`render.php` と表示を揃える（`ServerSideRender` は非推奨の仕組みなので新規には使わない）。
+- 表示はサーバーサイドレンダリング（`render.php`・`save: () => null`）を基本にする。エディターのプレビューは edit.js でクライアント側に組み立て、`render.php` と表示を揃える（`ServerSideRender` は非推奨の仕組みなので新規には使わない）。日付はブラウザーではなくサイトのタイムゾーンで求め（PHP の `wp_date()` ⇔ JS の `@wordpress/date` の `date()`）、入力値の正規化も `render.php` と同じにする（例: `absint()` ⇔ `Math.abs( Math.trunc() )`）。
 - `render.php` のローカル変数も WPCS の接頭辞ルールの対象になるので `$pressable_plugin_` を付ける。
 - `@wordpress/*` パッケージは実行時には WordPress 本体のスクリプトを使う（ビルドで外部化される）。import するパッケージは ESLint のために devDependencies に追加する。
 - 既存ブロック: `pressable-plugin/copyright`（「© 開始年–今年 権利者名」。テーマのフッターで使用）。

@@ -46,6 +46,7 @@ pressable-theme/
 - パターンカテゴリは `pressable-theme`（functions.php で登録）。テンプレートからだけ読み込むパターンはヘッダーに `Inserter: no` を付ける。
 - CSS はまず theme.json、次に assets/css/theme.css。クラス接頭辞はテーマスラッグ＋ハイフン（`pressable-theme-`）。テーマスラッグと揃えておくと、rename-site スキルでスラッグと一緒に置き換わる。
 - ブレークポイントは WP 標準に合わせ `max-width: 781px`。タブレット幅の調整が必要な場合は `max-width: 1279px`（WP の `$break-wide` 未満）を使う。
+- ヘッダーの検索は、PC 用の検索欄（`pressable-theme-header-search`）とスマホ用の「ボタンのみ」（`pressable-theme-header-search-mobile`）の 2 つの検索ブロックを、theme.css で 781px を境に切り替えている。重複に見えても片方を消さない。
 - PHP は WordPress コーディング規約（関数・変数は `pressable_theme_`、定数は `PRESSABLE_THEME_` 接頭辞、エスケープ必須）。リポジトリ直下で `composer lint`。
 - テーマのパターン一覧は WordPress が 30 分キャッシュする（style.css の Version が変わらない限り）。パターンを追加・改名したら、ローカル（Studio）はリポジトリのルートで `studio wp eval 'wp_get_theme()->delete_pattern_cache();'` を実行して消す。本番は反映まで最大 30 分かかり、すぐ反映したいときは style.css の Version を上げる。
 - エディターで保存済みのテンプレート・テンプレートパーツは DB に入り、テーマファイルより優先される（ファイルの変更が表示に出ない）。その場合はエディターでテンプレートをリセットするか、変更をエディター側でも行う。
