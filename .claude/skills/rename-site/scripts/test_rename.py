@@ -131,6 +131,19 @@ class RenameScenarios(unittest.TestCase):
                 self.assertEqual(result.returncode, 1, msg=result.stdout + result.stderr)
                 self.assertEqual(git(self.repo, "status", "--porcelain"), "")
 
+    def test_outside_a_git_work_tree_changes_nothing(self) -> None:
+        # Without a Git file list the script must not fall back to scanning the whole folder,
+        # which in a Studio site also holds WordPress core, uploads and other plugins.
+        shutil.rmtree(self.repo / ".git")
+        before = self.read("wp-content/themes/pressable-theme/style.css")
+
+        result = self.rename("sample-store", "sample-store-functions")
+
+        self.assertEqual(result.returncode, 1, msg=result.stdout + result.stderr)
+        self.assertIn("Git の作業ツリーではありません", result.stderr)
+        self.assertEqual(self.read("wp-content/themes/pressable-theme/style.css"), before)
+        self.assertTrue((self.repo / "wp-content/plugins/pressable-plugin/pressable-plugin.php").is_file())
+
     def test_same_values_is_a_no_op(self) -> None:
         self.assert_ok(self.rename("sample-store", "sample-store-functions"))
         self.commit("rename")

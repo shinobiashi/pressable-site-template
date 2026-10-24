@@ -78,26 +78,29 @@ def read_text(path: Path) -> str | None:
         return None
 
 
-def git_files(repo: Path) -> set[Path] | None:
-    """Tracked and not-ignored files, or None when the repository is not a Git work tree.
+def git_files(repo: Path) -> set[Path]:
+    """Tracked and not-ignored files of the repository.
 
     The repository root doubles as the Studio site folder, so it also holds WordPress core,
-    uploads and other plugins (all git-ignored). Only the repository's own files are renamed.
+    uploads and other plugins (all git-ignored). Only the repository's own files are renamed,
+    so without a Git file list nothing is scanned at all (fail closed).
     """
     if not (repo / ".git").exists() or shutil.which("git") is None:
-        return None
+        raise RenameError(
+            f"{repo} は Git の作業ツリーではありません（または git コマンドがありません）。"
+            "Git が管理していないファイルを書き換えないよう、Git のリポジトリで実行してください。"
+        )
     result = subprocess.run(
         ["git", "-C", str(repo), "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
         capture_output=True,
-        check=True,
     )
+    if result.returncode != 0:
+        raise RenameError(f"Git のファイル一覧を取得できませんでした: {result.stderr.decode('utf-8', 'replace').strip()}")
     return {repo / name for name in result.stdout.decode("utf-8").split("\0") if name}
 
 
 def iter_repo_files(repo: Path):
-    tracked = git_files(repo)
-    candidates = sorted(tracked) if tracked is not None else sorted(repo.rglob("*"))
-    for path in candidates:
+    for path in sorted(git_files(repo)):
         rel_parts = path.relative_to(repo).parts
         if any(part in SKIP_DIR_NAMES for part in rel_parts):
             continue
@@ -117,7 +120,7 @@ def find_headers(repo: Path, kind: str, main_file, header_re: str) -> list[tuple
         main = item_dir / main_file(item_dir.name)
         if item_dir.is_symlink() or not main.is_file():
             continue
-        if tracked is not None and main not in tracked:
+        if main not in tracked:
             continue
         match = re.search(header_re, main.read_text(encoding="utf-8"), re.M)
         if match:
