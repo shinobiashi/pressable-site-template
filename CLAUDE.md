@@ -25,7 +25,7 @@ Pressable でホスティングする WordPress サイトの構築用テンプ�
 ```
 
 <!-- rename-site:start -->
-テンプレートには、このほかに `.claude/skills/rename-site/`（サイト名・テーマ・プラグインの名前の一括変更スキル）がある。新しいサイトのリポジトリでは、リネームの最後に `rename.py --remove-skill` で削除する（このような、テンプレートにだけ必要な記述も一緒に消える）。
+テンプレートには、このほかに `.claude/skills/rename-site/`（サイト名・テーマ・プラグインの名前の一括変更スキル）がある。新しいサイトのリポジトリでは、リネームの最後に `rename.py --remove-skill` で削除する。このような、テンプレートにだけ必要な記述と、テンプレート自身のレビュー記録（`docs/reviews/`・`docs/review-backlog.md` の中身）も一緒に消える。`docs/review-baseline.md` は案件でも有効なので残る。
 <!-- rename-site:end -->
 
 ## テーマとプラグインの役割分担

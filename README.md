@@ -154,6 +154,10 @@ python3 -I .claude/skills/rename-site/scripts/rename.py \
 - `.claude/skills/rename-site/`（スキル本体）
 - `.gitignore` の `!/.claude/skills/rename-site/` の行と、CI（`.github/workflows/lint.yml`）のスキルのテストのジョブ
 - README.md・CLAUDE.md の、テンプレートにだけ必要な記述（この節など）
+- `docs/reviews/`（テンプレート自身のレビュー記録）
+- `docs/review-backlog.md` の中身（テンプレートで後回しにした指摘。表の見出しだけを残し、案件のレビューで追記できるようにする）
+
+`docs/review-baseline.md`（レビューで許容した書き方）は残します。案件も同じコードを受け継ぐので、案件のレビューでもそのまま有効です。テンプレートで後回しにした指摘は、テンプレートで直します（これから作る案件にはそのまま入ります）。
 
 削除する範囲は、各ファイルで `rename-site:start` と `rename-site:end` のコメントで囲んであります。テンプレートにだけ必要な記述を足すときは、同じように囲んでください。
 

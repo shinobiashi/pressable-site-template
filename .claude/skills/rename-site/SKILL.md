@@ -76,7 +76,13 @@ description: このリポジトリ（Pressable サイトテンプレート）の
    python3 -I .claude/skills/rename-site/scripts/rename.py --remove-skill
    ```
 
-   スキルのディレクトリ（`git rm`）と、各ファイルで `rename-site:start` / `rename-site:end` のコメントに囲まれたテンプレート用の記述（`.gitignore` の許可行、CI の `rename-skill` ジョブ、README.md・CLAUDE.md のスキルの説明）を消す。名前を変える前・テンプレート自身・マーカーの対応が取れていないときは、何も変えずに終了コード 1 で止まる。
+   次のものを消す。名前を変える前・テンプレート自身・マーカーの対応が取れていないときは、何も変えずに終了コード 1 で止まる。
+
+   - スキルのディレクトリと、テンプレート自身のレビュー記録 `docs/reviews/`（どちらもディレクトリごと `git rm`。リネームの置換で未コミットの変更があっても消すので、その旨を「注意」で出す）
+   - 各ファイルで `rename-site:start` / `rename-site:end` のコメントに囲まれたテンプレート用の記述（`.gitignore` の許可行、CI の `rename-skill` ジョブ、README.md・CLAUDE.md のスキルの説明）
+   - `docs/review-backlog.md` の中身（テンプレートで後回しにした指摘）。表の見出しと区切り行だけを残し、案件のレビューがそのまま追記できるようにする
+
+   `docs/review-baseline.md`（レビューで許容した書き方）は残す。案件も同じコードを受け継ぐので、案件のレビューでもそのまま有効なため。
 
 8. **報告する。** 変更した名前・識別子の対応、リネームしたパス、実行したチェックの結果、スキルを削除したことを伝える。コミットはユーザーの指示を待つ。リネームとスキルの削除は同じコミットにしてよい。
 
@@ -100,7 +106,7 @@ python3 -I ~/Dev/pressable-site-template/.claude/skills/rename-site/scripts/rena
 - テーマ・プラグインのディレクトリ名と、プラグインのメインファイル名（git で管理されていれば `git mv`）
 - スラッグ（`sample-store`）・PHP 接頭辞（`sample_store`）・定数接頭辞（`SAMPLE_STORE`）が現れる、Git 管理下のすべてのテキストファイル。Text Domain、`@package`、パターンのスラッグとカテゴリ、CSS クラス（`<テーマスラッグ>-card` など）、ブロック名、`.gitignore`・`.deployignore` の許可リスト、`.phpcs.xml.dist`、CI のパス、`bin/studio-*.sh`、各 CLAUDE.md・README.md、build/、package.json / package-lock.json が該当する
 - 名前が書かれた決まった行: `Theme Name`・`Plugin Name`・各説明文のサイト名・functions.php と theme.css の先頭・各 CLAUDE.md の見出し・package.json の description・README.md の見出しと冒頭
-- `--remove-skill` のとき: `.claude/skills/rename-site/` と、Git 管理下のファイルの `rename-site:start` / `rename-site:end` で囲んだ範囲（中が空になった `.claude/skills/`・`.claude/` も消す）
+- `--remove-skill` のとき: `.claude/skills/rename-site/` と `docs/reviews/`（中が空になった親ディレクトリも消す）、Git 管理下のファイルの `rename-site:start` / `rename-site:end` で囲んだ範囲、`docs/review-backlog.md` の表の中身（見出しと区切り行は残す）。対象は `rename.py` の `TEMPLATE_ONLY_DIRS` と `TABLE_HEADER_ONLY`
 
 ## 変更しないもの
 
@@ -111,7 +117,7 @@ python3 -I ~/Dev/pressable-site-template/.claude/skills/rename-site/scripts/rena
 
 ## スクリプトを変更するとき
 
-`scripts/test_rename.py` に、全体のリネーム・一部だけのリネーム（変えないスラッグが変えるスラッグを含む場合）・新スラッグが旧スラッグを含む場合・ハイフンの無い一般語のスラッグ・不正な入力・変更なし・テンプレート自身での拒否・スキルの削除（削除後のファイル・名前を変える前の拒否・対応の取れないマーカー）・削除後にテンプレートのスクリプトを `--repo` で使うリネーム、のシナリオテストがある。`rename.py` を変更したら実行する（テンプレートの CI でも実行される）。
+`scripts/test_rename.py` に、全体のリネーム・一部だけのリネーム（変えないスラッグが変えるスラッグを含む場合）・新スラッグが旧スラッグを含む場合・ハイフンの無い一般語のスラッグ・不正な入力・変更なし・テンプレート自身での拒否・スキルの削除（削除後のファイルと docs/・名前を変える前の拒否・対応の取れないマーカー）・削除後にテンプレートのスクリプトを `--repo` で使うリネーム、のシナリオテストがある。`rename.py` を変更したら実行する（テンプレートの CI でも実行される）。
 
 スキルのディレクトリは置換の対象外で、リネームしてからスキルを削除するまでの間は、サイトのリポジトリの CI でもテストが走る。テストにテンプレートの既定の名前（`pressable-theme` / `pressable-plugin`）を直書きせず、現在のテーマ・プラグインのディレクトリを探して使う。
 

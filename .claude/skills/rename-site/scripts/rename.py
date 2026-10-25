@@ -19,10 +19,11 @@ The skill only lives in the template. After the rename, a new site's repository 
 
     python3 -I .claude/skills/rename-site/scripts/rename.py --remove-skill --dry-run
 
-This deletes the skill directory and every block that only the template needs, marked with
-`<!-- rename-site:start -->` ... `<!-- rename-site:end -->` (`# rename-site:start` ...
-`# rename-site:end` in YAML and .gitignore). To rename such a repository later, run the
-template's copy of this script with `--repo <site repository>`.
+This deletes the skill directory, the template's own review records (docs/reviews/) and every
+block that only the template needs, marked with `<!-- rename-site:start -->` ...
+`<!-- rename-site:end -->` (`# rename-site:start` ... `# rename-site:end` in YAML and
+.gitignore), and empties the template's review backlog down to its table header. To rename
+such a repository later, run the template's copy of this script with `--repo <site repository>`.
 """
 
 from __future__ import annotations
@@ -40,6 +41,11 @@ SKILL_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_REPO = Path(__file__).resolve().parents[4]
 SKILL_REL = Path(".claude") / "skills" / "rename-site"
 TEMPLATE_NAME = "pressable-site-template"
+# What --remove-skill deletes as a whole, and files that only keep their table header
+# (the template's own entries mean nothing in a site; the site's reviews append to the table).
+TEMPLATE_ONLY_DIRS = {SKILL_REL: "このスキル", Path("docs") / "reviews": "テンプレートのレビュー記録"}
+TABLE_HEADER_ONLY = {Path("docs") / "review-backlog.md": "テンプレートで後回しにした指摘"}
+TABLE_SEPARATOR_RE = re.compile(r"^\|(?:[ \t]*:?-+:?[ \t]*\|)+[ \t]*$", re.M)
 
 # Template-only blocks. A block marker stands alone on its line; an inline marker pair wraps
 # text within one line. The blank line after a block goes with it, so no gap is left behind.
@@ -429,66 +435,101 @@ def strip_markers(text: str) -> str:
     return new_text
 
 
-def removal_plan(repo: Path) -> tuple[Path, dict[Path, tuple[str, str]]]:
-    """The skill directory and the files whose template-only blocks are removed."""
+def table_header_only(text: str) -> str | None:
+    """The text up to the first table's separator row, or None when there is no table."""
+    match = TABLE_SEPARATOR_RE.search(text)
+    return text[: match.end()] + "\n" if match else None
+
+
+def removal_plan(repo: Path) -> tuple[list[Path], dict[Path, tuple[str, str]], list[str]]:
+    """The directories to delete, the files to rewrite and notes on what is left as is."""
     if is_template(repo):
         raise RenameError(f"{repo} はテンプレート（{TEMPLATE_NAME}）自身です。スキルはテンプレートに置いておくので、削除しません。")
     if readme_heading(repo) == TEMPLATE_NAME:
         raise RenameError("まだ名前を変えていません（README.md の見出しがテンプレートのまま）。名前を変えてから削除してください。")
-    contents = {}
+    dirs = [repo / rel for rel in TEMPLATE_ONLY_DIRS if (repo / rel).is_dir()]
+    deleted = {path.resolve() for path in dirs}
+    contents, notes = {}, []
+    for path in dirs:
+        # Usually the rename itself, which is not committed yet when the skill runs this step.
+        status = subprocess.run(["git", "-C", str(repo), "status", "--porcelain", "--", str(path.relative_to(repo))],
+                                capture_output=True, text=True)
+        if status.stdout.strip():
+            notes.append(f"{path.relative_to(repo)}/ に未コミットの変更があります（リネームによる置換を含む）。"
+                         "ディレクトリごと削除するので、その変更も消えます")
     for path in iter_repo_files(repo):
-        text = read_text(path)
-        if text is None or not MARKER_RE.search(text):
+        if deleted & set(path.resolve().parents):
             continue
-        new_text = strip_markers(text)
-        if MARKER_RE.search(new_text):
-            raise RenameError(f"{path.relative_to(repo)} の rename-site:start と rename-site:end の対応が取れていません。")
-        contents[path] = (text, new_text)
-    return repo / SKILL_REL, contents
+        text = read_text(path)
+        if text is None:
+            continue
+        rel = path.relative_to(repo)
+        new_text = text
+        if MARKER_RE.search(text):
+            new_text = strip_markers(text)
+            if MARKER_RE.search(new_text):
+                raise RenameError(f"{rel} の rename-site:start と rename-site:end の対応が取れていません。")
+        if rel in TABLE_HEADER_ONLY:
+            header = table_header_only(new_text)
+            if header is None:
+                notes.append(f"{rel} に表が見つからないため、中身を残します（手で直されている可能性）")
+            else:
+                new_text = header
+        if new_text != text:
+            contents[path] = (text, new_text)
+    return dirs, contents, notes
 
 
-def apply_removal(repo: Path, skill_dir: Path, contents: dict[Path, tuple[str, str]]) -> None:
-    if skill_dir.is_dir():
-        if is_git_tracked(repo, skill_dir):
-            result = subprocess.run(
-                ["git", "-C", str(repo), "rm", "-r", "-q", "--", str(skill_dir.relative_to(repo))],
-                capture_output=True, text=True,
-            )
-            if result.returncode != 0:
-                raise RenameError(f"スキルを削除できませんでした（何も変更していません）: {result.stderr.strip()}")
-        if skill_dir.exists():
-            shutil.rmtree(skill_dir)  # Untracked leftovers such as __pycache__/.
-        for parent in (skill_dir.parent, skill_dir.parent.parent):
-            if parent.is_dir() and not any(parent.iterdir()):
-                parent.rmdir()
+def apply_removal(repo: Path, dirs: list[Path], contents: dict[Path, tuple[str, str]]) -> None:
+    tracked = [str(path.relative_to(repo)) for path in dirs if is_git_tracked(repo, path)]
+    if tracked:
+        # -f: the directories go as a whole, including uncommitted changes (reported by removal_plan).
+        result = subprocess.run(["git", "-C", str(repo), "rm", "-r", "-q", "-f", "--", *tracked],
+                                capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RenameError(f"削除できませんでした（何も変更していません）: {result.stderr.strip()}")
+    for path in dirs:
+        if path.exists():
+            shutil.rmtree(path)  # Untracked leftovers such as __pycache__/.
+        parent = path.parent
+        while parent != repo and parent.is_dir() and not any(parent.iterdir()):
+            parent.rmdir()
+            parent = parent.parent
     for path, (_, new_text) in contents.items():
         path.write_text(new_text, encoding="utf-8")
 
 
 def remove_skill(repo: Path, dry_run: bool) -> int:
     try:
-        skill_dir, contents = removal_plan(repo)
+        dirs, contents, notes = removal_plan(repo)
     except RenameError as error:
         print(f"エラー: {error}", file=sys.stderr)
         return 1
 
     print(f"リポジトリ: {repo}")
-    if not skill_dir.is_dir() and not contents:
+    if not dirs and not contents:
         print("削除するものはありません（スキルもテンプレート用の記述もありません）。")
         return 0
-    print("削除するもの:")
-    if skill_dir.is_dir():
-        print(f"  {skill_dir.relative_to(repo)}/（このスキル）")
+    print("削除・変更するもの:")
+    for path in dirs:
+        rel = path.relative_to(repo)
+        print(f"  {rel}/（{TEMPLATE_ONLY_DIRS[rel]}。ディレクトリごと削除）")
     for path, (text, _) in sorted(contents.items()):
+        rel = path.relative_to(repo)
+        if rel in TABLE_HEADER_ONLY:
+            print(f"  {rel}（{TABLE_HEADER_ONLY[rel]}。表の見出しだけ残す）")
+            continue
         count = len(MARKER_BLOCK_RE.findall(text)) + len(MARKER_INLINE_RE.findall(MARKER_BLOCK_RE.sub("", text)))
-        print(f"  {path.relative_to(repo)}（テンプレート用の記述 {count} か所）")
+        print(f"  {rel}（テンプレート用の記述 {count} か所）")
+    for note in notes:
+        print(f"\n注意: {note}")
 
     if dry_run:
         print("\n--dry-run のため、何も削除していません。")
         return 0
 
     try:
-        apply_removal(repo, skill_dir, contents)
+        apply_removal(repo, dirs, contents)
     except RenameError as error:
         print(f"エラー: {error}", file=sys.stderr)
         return 1
