@@ -49,17 +49,22 @@ TABLE_SEPARATOR_RE = re.compile(r"^\|(?:[ \t]*:?-+:?[ \t]*\|)+[ \t]*$", re.M)
 
 # Template-only blocks. A block marker stands alone on its line; an inline marker pair wraps
 # text within one line. The blank line after a block goes with it, so no gap is left behind.
-# A block never spans another start marker, so a stray one is left over (and reported)
-# instead of widening the removal up to the next end marker.
-MARKER_START = r"(?:<!-- rename-site:start -->|# rename-site:start)"
-MARKER_END = r"(?:<!-- rename-site:end -->|# rename-site:end)"
+# Neither kind spans another marker, and a block ends with the comment syntax it starts with,
+# so a stray or mismatched marker is left over (and reported) instead of widening the removal.
+MARKER_SYNTAXES = (("<!-- ", " -->"), ("# ", ""))  # Markdown; YAML and .gitignore
+NOT_A_MARKER = "(?!{})".format(
+    "|".join(rf"{re.escape(head)}rename-site:(?:start|end){re.escape(tail)}" for head, tail in MARKER_SYNTAXES)
+)
 MARKER_BLOCK_RE = re.compile(
-    rf"^[ \t]*{MARKER_START}[ \t]*\n"
-    rf"(?:(?!{MARKER_START}).)*?"
-    rf"^[ \t]*{MARKER_END}[ \t]*(?:\n|\Z)(?:[ \t]*\n)?",
+    "|".join(
+        rf"^[ \t]*{re.escape(head)}rename-site:start{re.escape(tail)}[ \t]*\n"
+        rf"(?:{NOT_A_MARKER}.)*?"
+        rf"^[ \t]*{re.escape(head)}rename-site:end{re.escape(tail)}[ \t]*(?:\n|\Z)(?:[ \t]*\n)?"
+        for head, tail in MARKER_SYNTAXES
+    ),
     re.M | re.S,
 )
-MARKER_INLINE_RE = re.compile(r" ?<!-- rename-site:start -->[^\n]*?<!-- rename-site:end -->")
+MARKER_INLINE_RE = re.compile(rf" ?<!-- rename-site:start -->(?:{NOT_A_MARKER}[^\n])*?<!-- rename-site:end -->")
 MARKER_RE = re.compile(r"rename-site:(?:start|end)")
 
 SLUG_RE = re.compile(r"^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$")

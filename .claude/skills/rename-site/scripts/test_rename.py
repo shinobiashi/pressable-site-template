@@ -265,6 +265,28 @@ class RenameScenarios(unittest.TestCase):
         self.assert_unchanged(result)
         self.assertIn("対応が取れていません", result.stderr)
 
+    def test_remove_skill_with_mismatched_markers_changes_nothing(self) -> None:
+        self.assert_ok(self.rename("sample-store", "sample-store-functions"))
+        self.commit("rename")
+        readme = self.repo / "README.md"
+        original = readme.read_text(encoding="utf-8")
+        cases = {
+            # An HTML start marker does not end at a "#" end marker.
+            "mixed comment syntaxes": "<!-- rename-site:start -->\nkeep this\n# rename-site:end\n",
+            # An inline pair does not swallow a stray start marker before it on the same line.
+            "stray inline start": "<!-- rename-site:start -->keep this <!-- rename-site:start -->template only"
+                                  "<!-- rename-site:end -->\n",
+        }
+        for name, appended in cases.items():
+            with self.subTest(name):
+                readme.write_text(f"{original}\n{appended}", encoding="utf-8")
+                self.commit(name)
+
+                result = self.remove_skill()
+
+                self.assert_unchanged(result)
+                self.assertIn("対応が取れていません", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()
