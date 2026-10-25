@@ -240,6 +240,18 @@ class RenameScenarios(unittest.TestCase):
 
         self.assert_unchanged(self.remove_skill())
 
+    def test_remove_skill_rejects_rename_options(self) -> None:
+        self.assert_ok(self.rename("sample-store", "sample-store-functions"))
+        self.commit("rename")
+
+        for extra in (("--site-name", "サンプル商店"), ("--from-theme-slug", "sample-store"),
+                      ("--from-plugin-slug", "sample-store-functions")):
+            with self.subTest(extra=extra):
+                result = self.remove_skill(*extra)
+                self.assertEqual(result.returncode, 2, msg=result.stdout + result.stderr)
+                self.assertIn(extra[0], result.stderr)
+                self.assertEqual(git(self.repo, "status", "--porcelain"), "")
+
     def test_remove_skill_with_a_stray_marker_changes_nothing(self) -> None:
         self.assert_ok(self.rename("sample-store", "sample-store-functions"))
         readme = self.repo / "README.md"

@@ -557,8 +557,11 @@ def main() -> int:
     repo = args.repo.resolve()
     name_args = ("site_name", "theme_name", "theme_slug", "plugin_name", "plugin_slug")
     if args.remove_skill:
-        if any(getattr(args, name) is not None for name in name_args):
-            parser.error("--remove-skill は名前の引数と一緒に使えません。名前を変えてから、別に実行してください。")
+        rename_args = (*name_args, "from_theme_slug", "from_plugin_slug")
+        given = [f"--{name.replace('_', '-')}" for name in rename_args if getattr(args, name) is not None]
+        if given:
+            parser.error(f"--remove-skill は名前を変える引数（{' '.join(given)}）と一緒に使えません。"
+                         "名前を変えてから、別に実行してください。")
         return remove_skill(repo, args.dry_run)
     missing = [f"--{name.replace('_', '-')}" for name in name_args if getattr(args, name) is None]
     if missing:
