@@ -103,7 +103,7 @@ Claude Code で、サイト名・テーマ名とスラッグ・プラグイン�
 1. 変更内容を事前に表示（dry-run）
 2. 一括変更（Git で管理しているファイルだけが対象で、WordPress 本体や他のプラグインには触れない）
 3. 古い名前の残り・JSON・PHP 構文の自動チェック
-4. ブロックの再ビルド（`npm run build`）と PHPCS
+4. ブロックの再ビルド（`npm run build`）、JS の lint（`npm run lint:js`）、PHPCS
 5. `bin/studio-prepare.sh` で新しいテーマ・プラグインを有効化
 
 コミットはしないので、差分を確認してからコミットしてください。
@@ -135,7 +135,7 @@ python3 -I .claude/skills/rename-site/scripts/rename.py \
 
 実行後は次の 3 つを行ってください。
 
-1. プラグインのディレクトリで `npm ci && npm run build`（build/ の作り直し）
+1. プラグインのディレクトリで `npm ci && npm run build && npm run lint:js`（build/ の作り直しと、整形の確認。lint のエラーは `npx wp-scripts lint-js src --fix` で直る）
 2. リポジトリのルートで `composer lint`
 3. `bin/studio-prepare.sh`
 

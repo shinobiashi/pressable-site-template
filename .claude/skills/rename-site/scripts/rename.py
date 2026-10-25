@@ -455,7 +455,7 @@ def main() -> int:
     plugin_rel = Path("wp-content") / "plugins" / new.plugin_slug
     print("自動チェック: 古い名前の残り・JSON・PHP 構文（php があれば）に問題はありません。")
     print("\n次の作業:")
-    print(f"  1. cd {plugin_rel} && nvm use && npm ci && npm run build   # build/ を作り直す")
+    print(f"  1. cd {plugin_rel} && nvm use && npm ci && npm run build && npm run lint:js   # build/ を作り直し、整形を確かめる")
     print("  2. composer lint   # リポジトリのルートで")
     print("  3. Studio サイトのフォルダなら bin/studio-prepare.sh を実行する（新しいスラッグで有効化）")
     return 0
