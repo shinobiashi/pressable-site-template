@@ -12,3 +12,4 @@
 | 2026-10-18 | initial R2-2 | Low | bin/studio-prepare.sh:59 | `mail_function_file="$(studio_wp eval …)"` は `set -e` の下で、eval が失敗するとその場で終了し、警告も `studio status` も出ない。`\|\| mail_function_file=""` を付けると警告まで進む | 未起票 |
 | 2026-10-18 | initial R2-3 | Low | .claude/skills/rename-site/scripts/rename.py（TOKEN_START） | 直前が `-` のときは置換しないため、`wp-block-<プラグインスラッグ>-copyright` のような生成されるクラス名をファイルに書くと置き換わらず、残りチェックにも出ない（今は該当なし）。SKILL.md に制約として書く | 未起票 |
 | 2026-10-18 | initial R2-4 | Low（要判断） | .claude/skills/rename-site/scripts/rename.py | 旧スラッグがハイフンの無い一般語（`store` など）だと、後ろ側の境界が無いため一般の単語まで置き換わる（`edit.js` の `import { store as coreStore }` など）。スラッグにハイフンを必須にすれば、この種の問題をまとめて防げる | 未起票 |
+| 2026-10-25 | PR #2 post-merge | Low | .claude/skills/rename-site/scripts/test_rename.py:81,105 | `test_full_rename` の古い名前の残りチェックと `test_new_slug_that_contains_the_old_slug` がテンプレートの既定の名前を直書きしている。リネーム後のリポジトリでも通るが、何も確かめなくなる（残りチェックが空振りし、新スラッグが旧スラッグを含む場面にならない）。現在の名前から組み立てる | 未起票 |

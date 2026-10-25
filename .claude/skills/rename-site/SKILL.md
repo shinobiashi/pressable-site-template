@@ -86,6 +86,8 @@ description: このリポジトリ（Pressable サイトテンプレート）の
 
 `scripts/test_rename.py` に、全体のリネーム・一部だけのリネーム（変えないスラッグが変えるスラッグを含む場合）・新スラッグが旧スラッグを含む場合・ハイフンの無い一般語のスラッグ・不正な入力・変更なし、のシナリオテストがある。`rename.py` を変更したら実行する（CI でも実行される）。
 
+スキルのディレクトリは置換の対象外で、テストはリネーム後のサイトのリポジトリの CI でもそのまま走る。テストにテンプレートの既定の名前（`pressable-theme` / `pressable-plugin`）を直書きせず、現在のテーマ・プラグインのディレクトリを探して使う。
+
 ```bash
 python3 -I .claude/skills/rename-site/scripts/test_rename.py
 ```

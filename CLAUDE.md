@@ -59,7 +59,7 @@ nvm use && npm ci
 npm run build        # npm run start でウォッチ
 npm run lint:js
 
-# rename-site スキルのシナリオテスト（rename.py を変更したとき。リポジトリ直下）
+# rename-site スキルのシナリオテスト（rename.py・テストを変更したとき。リポジトリ直下。注意点は SKILL.md の「スクリプトを変更するとき」）
 python3 -I .claude/skills/rename-site/scripts/test_rename.py
 ```
 
