@@ -1,11 +1,13 @@
 ---
 name: rename-site
-description: このリポジトリ（Pressable サイトテンプレート）のサイト名・テーマ名とテーマスラッグ・プラグイン名とプラグインスラッグを一括で変更する。テンプレートから新しいサイトのリポジトリを作った直後に「サイト名を〇〇、テーマを〇〇（スラッグ〇〇）、プラグインを〇〇にして」「テーマ名とプラグイン名を案件用に変えて」「pressable-theme / pressable-plugin をリネームして」「テンプレートの名前を一括置換して」などと言われたら必ず使う。ディレクトリ名・Text Domain・PHP の関数/変数/定数の接頭辞・CSS クラス接頭辞・パターンのスラッグ・ブロックの名前空間・.gitignore・.deployignore・PHPCS 設定・CI・Studio 用スクリプトまで、手作業の置換では漏れやすい箇所を同梱スクリプトでまとめて書き換える。名前の一部だけ（テーマだけ・プラグインだけ）を変える場合にも使う。
+description: このリポジトリ（Pressable サイトテンプレート）のサイト名・テーマ名とテーマスラッグ・プラグイン名とプラグインスラッグを一括で変更する。テンプレートから新しいサイトのリポジトリを作った直後に「サイト名を〇〇、テーマを〇〇（スラッグ〇〇）、プラグインを〇〇にして」「テーマ名とプラグイン名を案件用に変えて」「pressable-theme / pressable-plugin をリネームして」「テンプレートの名前を一括置換して」などと言われたら必ず使う。ディレクトリ名・Text Domain・PHP の関数/変数/定数の接頭辞・CSS クラス接頭辞・パターンのスラッグ・ブロックの名前空間・.gitignore・.deployignore・PHPCS 設定・CI・Studio 用スクリプトまで、手作業の置換では漏れやすい箇所を同梱スクリプトでまとめて書き換える。名前の一部だけ（テーマだけ・プラグインだけ）を変える場合にも使う。このスキルはテンプレートにだけ置き、テンプレートから作ったリポジトリでは名前を変えた最後に自分自身を削除する。
 ---
 
 # rename-site
 
 テンプレートの既定のサイト名・テーマ・プラグインの名前を、案件の名前に一括で変更する。置換は `scripts/rename.py` が行う。手で検索置換しないこと。スラッグは Text Domain・PHP の接頭辞・CSS クラス・パターンのスラッグ・ブロック名・パス・CI 設定に形を変えて散らばっていて、手作業だと必ず漏れが出るため。
+
+このスキルの置き場所はテンプレート（pressable-site-template）だけ。GitHub の「Use this template」は全ファイルをコピーするので、新しいリポジトリにも一度は入るが、名前を変えた最後（手順 7）に削除する。残すと案件ごとに古い版が増え、テンプレートで直した内容が届かないため。テンプレート自身（origin が pressable-site-template）では、スクリプトは名前の変更も削除も拒否する。
 
 ## 使ってよいタイミング
 
@@ -67,13 +69,38 @@ description: このリポジトリ（Pressable サイトテンプレート）の
 
 6. **ローカルサイトで有効化する（リポジトリが Studio サイトのフォルダの場合）。** `bin/studio-prepare.sh` を実行すると、新しいスラッグのテーマ・プラグインを有効化する（ローカルのデータベースは旧スラッグを覚えているため）。Studio のサイト名やサイトタイトルも変えたい場合は、`studio config set --name "<サイト名>"` と `studio wp option update blogname "<サイト名>"` をリポジトリのルートで実行する。
 
-7. **報告する。** 変更した名前・識別子の対応、リネームしたパス、実行したチェックの結果を伝える。コミットはユーザーの指示を待つ。
+7. **このスキルを削除する。** リポジトリのルートで dry-run → 実行の順に行う。
+
+   ```bash
+   python3 -I .claude/skills/rename-site/scripts/rename.py --remove-skill --dry-run
+   python3 -I .claude/skills/rename-site/scripts/rename.py --remove-skill
+   ```
+
+   スキルのディレクトリ（`git rm`）と、各ファイルで `rename-site:start` / `rename-site:end` のコメントに囲まれたテンプレート用の記述（`.gitignore` の許可行、CI の `rename-skill` ジョブ、README.md・CLAUDE.md のスキルの説明）を消す。名前を変える前・テンプレート自身・マーカーの対応が取れていないときは、何も変えずに終了コード 1 で止まる。
+
+8. **報告する。** 変更した名前・識別子の対応、リネームしたパス、実行したチェックの結果、スキルを削除したことを伝える。コミットはユーザーの指示を待つ。リネームとスキルの削除は同じコミットにしてよい。
+
+## スキルを削除した後に名前を変えるとき
+
+公開後は変えない前提（上の「使ってよいタイミング」）。どうしても必要なときは、手元のテンプレートを `git pull` で最新にし、そのスクリプトを `--repo` でサイトのリポジトリを指定して実行する。手順はこのファイルと同じ（手順 7 の削除は不要。スクリプトも案内しない）。
+
+```bash
+cd ~/Studio/<サイトのフォルダ>
+python3 -I ~/Dev/pressable-site-template/.claude/skills/rename-site/scripts/rename.py --repo . \
+  --site-name "サンプル商店" \
+  --theme-name "Sample Store" --theme-slug sample-store \
+  --plugin-name "Sample Store Functions" --plugin-slug sample-store-functions \
+  --dry-run
+```
+
+`--repo` を付けないと、既定の対象はスクリプトの置き場所のリポジトリ（テンプレート）になり、テンプレート自身なので拒否される。
 
 ## スクリプトが変更するもの
 
 - テーマ・プラグインのディレクトリ名と、プラグインのメインファイル名（git で管理されていれば `git mv`）
 - スラッグ（`sample-store`）・PHP 接頭辞（`sample_store`）・定数接頭辞（`SAMPLE_STORE`）が現れる、Git 管理下のすべてのテキストファイル。Text Domain、`@package`、パターンのスラッグとカテゴリ、CSS クラス（`<テーマスラッグ>-card` など）、ブロック名、`.gitignore`・`.deployignore` の許可リスト、`.phpcs.xml.dist`、CI のパス、`bin/studio-*.sh`、各 CLAUDE.md・README.md、build/、package.json / package-lock.json が該当する
 - 名前が書かれた決まった行: `Theme Name`・`Plugin Name`・各説明文のサイト名・functions.php と theme.css の先頭・各 CLAUDE.md の見出し・package.json の description・README.md の見出しと冒頭
+- `--remove-skill` のとき: `.claude/skills/rename-site/` と、Git 管理下のファイルの `rename-site:start` / `rename-site:end` で囲んだ範囲（中が空になった `.claude/skills/`・`.claude/` も消す）
 
 ## 変更しないもの
 
@@ -84,9 +111,13 @@ description: このリポジトリ（Pressable サイトテンプレート）の
 
 ## スクリプトを変更するとき
 
-`scripts/test_rename.py` に、全体のリネーム・一部だけのリネーム（変えないスラッグが変えるスラッグを含む場合）・新スラッグが旧スラッグを含む場合・ハイフンの無い一般語のスラッグ・不正な入力・変更なし、のシナリオテストがある。`rename.py` を変更したら実行する（CI でも実行される）。
+`scripts/test_rename.py` に、全体のリネーム・一部だけのリネーム（変えないスラッグが変えるスラッグを含む場合）・新スラッグが旧スラッグを含む場合・ハイフンの無い一般語のスラッグ・不正な入力・変更なし・テンプレート自身での拒否・スキルの削除（削除後のファイル・名前を変える前の拒否・対応の取れないマーカー）・削除後にテンプレートのスクリプトを `--repo` で使うリネーム、のシナリオテストがある。`rename.py` を変更したら実行する（テンプレートの CI でも実行される）。
 
-スキルのディレクトリは置換の対象外で、テストはリネーム後のサイトのリポジトリの CI でもそのまま走る。テストにテンプレートの既定の名前（`pressable-theme` / `pressable-plugin`）を直書きせず、現在のテーマ・プラグインのディレクトリを探して使う。
+スキルのディレクトリは置換の対象外で、リネームしてからスキルを削除するまでの間は、サイトのリポジトリの CI でもテストが走る。テストにテンプレートの既定の名前（`pressable-theme` / `pressable-plugin`）を直書きせず、現在のテーマ・プラグインのディレクトリを探して使う。
+
+テンプレートにだけ必要な記述（スキルの説明・テストのコマンド・CI のジョブなど）をテンプレートに足すときは、`<!-- rename-site:start -->` と `<!-- rename-site:end -->`（YAML・.gitignore では `# rename-site:start` と `# rename-site:end`）で囲む。マーカーは単独の行に置くか（その行から終わりの行まで、直後の空行も含めて消える）、1 行の中で文を囲む（その部分だけ消える）。囲みを入れ子にせず、囲みの中にマーカーの文字列そのものを書かない。
+
+テンプレート自身ではスクリプトが動かないので、手で試すときはテンプレートを一時ディレクトリにコピーし、そこで `git init` してから実行する（`test_rename.py` の `setUp` と同じやり方）。
 
 ```bash
 python3 -I .claude/skills/rename-site/scripts/test_rename.py
@@ -97,3 +128,6 @@ python3 -I .claude/skills/rename-site/scripts/test_rename.py
 - **「テーマが複数あります」「プラグインが複数あります」** — リポジトリに別のテーマやプラグインをコミットしている。変更元を `--from-theme-slug` / `--from-plugin-slug` で指定する。
 - **「該当する行が見つからないため変更しません」** — その行が手で書き換えられている。スラッグなどの置換は行われているので、表示された箇所だけ手で直す。
 - **「古い名前が残っています」** — スクリプトが知らない形で名前が書かれている。表示されたファイルを開いて直す。
+- **「テンプレート（pressable-site-template）自身なので、名前を変えません」** — テンプレートのリポジトリで実行している。テンプレートから作ったリポジトリで実行するか、`--repo` で対象を指定する。
+- **「まだ名前を変えていません」**（`--remove-skill`） — README.md の見出しがテンプレートのまま。先に名前を変える。
+- **「rename-site:start と rename-site:end の対応が取れていません」** — 表示されたファイルのマーカーが欠けているか、入れ子になっている。手で直してからもう一度実行する（何も変更されていない）。

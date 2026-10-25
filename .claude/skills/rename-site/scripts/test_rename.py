@@ -18,7 +18,8 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
-SCRIPT = Path(".claude/skills/rename-site/scripts/rename.py")
+SKILL = Path(".claude/skills/rename-site")
+SCRIPT = SKILL / "scripts" / "rename.py"
 # The skill itself and the review records (which quote names freely) are not checked for names.
 UNCHECKED_PREFIXES = (".claude/skills/rename-site/", "docs/")
 
@@ -51,12 +52,25 @@ class RenameScenarios(unittest.TestCase):
         git(self.repo, "-c", "user.name=test", "-c", "user.email=test@example.invalid", "commit", "-q", "-m", message)
 
     def rename(self, theme_slug: str, plugin_slug: str, *, site: str = "サンプル商店", theme_name: str = "Sample Store",
-               plugin_name: str = "Sample Store Functions") -> subprocess.CompletedProcess:
+               plugin_name: str = "Sample Store Functions", script: Path | None = None,
+               extra: tuple[str, ...] = ()) -> subprocess.CompletedProcess:
         return subprocess.run(
-            [sys.executable, "-I", str(self.repo / SCRIPT), "--site-name", site, "--theme-name", theme_name,
-             "--theme-slug", theme_slug, "--plugin-name", plugin_name, "--plugin-slug", plugin_slug],
+            [sys.executable, "-I", str(script or self.repo / SCRIPT), "--site-name", site, "--theme-name", theme_name,
+             "--theme-slug", theme_slug, "--plugin-name", plugin_name, "--plugin-slug", plugin_slug, *extra],
             capture_output=True, text=True,
         )
+
+    def remove_skill(self, *extra: str) -> subprocess.CompletedProcess:
+        return subprocess.run(
+            [sys.executable, "-I", str(self.repo / SCRIPT), "--remove-skill", *extra], capture_output=True, text=True,
+        )
+
+    def set_template_origin(self) -> None:
+        git(self.repo, "remote", "add", "origin", "git@github.com:example/pressable-site-template.git")
+
+    def assert_unchanged(self, result: subprocess.CompletedProcess) -> None:
+        self.assertEqual(result.returncode, 1, msg=result.stdout + result.stderr)
+        self.assertEqual(git(self.repo, "status", "--porcelain"), "")
 
     def read(self, rel: str) -> str:
         return (self.repo / rel).read_text(encoding="utf-8")
@@ -156,6 +170,78 @@ class RenameScenarios(unittest.TestCase):
         self.assert_ok(result)
         self.assertIn("変更はありません", result.stdout)
         self.assertEqual(git(self.repo, "status", "--porcelain"), "")
+
+    def test_template_itself_is_never_renamed(self) -> None:
+        self.set_template_origin()
+
+        result = self.rename("sample-store", "sample-store-functions")
+
+        self.assert_unchanged(result)
+        self.assertIn("テンプレート", result.stderr)
+
+    def test_remove_skill_after_rename(self) -> None:
+        result = self.rename("sample-store", "sample-store-functions")
+        self.assert_ok(result)
+        self.assertIn("--remove-skill", result.stdout)
+        self.commit("rename")
+
+        self.assert_ok(self.remove_skill("--dry-run"))
+        self.assertEqual(git(self.repo, "status", "--porcelain"), "")
+        self.assert_ok(self.remove_skill())
+
+        self.assertFalse((self.repo / SKILL).exists())
+        self.assertEqual(git(self.repo, "ls-files", str(SKILL)), "")
+        text = self.repo_text()
+        self.assertNotIn("rename-site:start", text)
+        self.assertNotIn("rename-site:end", text)
+        self.assertNotIn("rename-site/", self.read(".gitignore"))
+        workflow = self.read(".github/workflows/lint.yml")
+        self.assertNotIn("rename-skill", workflow)
+        self.assertIn("\n  phpcs:\n", workflow)
+        self.assertIn("\n      - run: composer lint\n\n  blocks:\n", workflow)
+        self.assertNotIn("test_rename.py", self.read("CLAUDE.md") + self.read("README.md"))
+        self.assertNotIn("## サイト名・テーマ・プラグインの名前を変更する", self.read("README.md"))
+        self.assertIn("（スキルは最後に、このリポジトリから自分自身を削除します）", self.read("README.md"))
+        for name in (".gitignore", ".github/workflows/lint.yml", "README.md", "CLAUDE.md"):
+            self.assertNotIn("\n\n\n", self.read(name), msg=name)
+
+    def test_rename_after_removing_the_skill_with_the_templates_script(self) -> None:
+        self.assert_ok(self.rename("sample-store", "sample-store-functions"))
+        self.assert_ok(self.remove_skill())
+        self.commit("rename and remove the skill")
+
+        result = self.rename("acme-store", "acme-store-functions", theme_name="Acme Store",
+                             script=REPO / SCRIPT, extra=("--repo", str(self.repo)))
+
+        self.assert_ok(result)
+        self.assertIn("Text Domain: acme-store\n", self.read("wp-content/themes/acme-store/style.css"))
+        self.assertTrue((self.repo / "wp-content/plugins/acme-store-functions/acme-store-functions.php").is_file())
+        self.assertNotIn("--remove-skill", result.stdout)
+
+    def test_remove_skill_refuses_in_the_template(self) -> None:
+        self.set_template_origin()
+
+        self.assert_unchanged(self.remove_skill())
+        self.assertTrue((self.repo / SKILL / "SKILL.md").is_file())
+
+    def test_remove_skill_refuses_before_rename(self) -> None:
+        if not self.read("README.md").startswith("# pressable-site-template\n"):
+            self.skipTest("this repository has already been renamed")
+
+        self.assert_unchanged(self.remove_skill())
+
+    def test_remove_skill_with_a_stray_marker_changes_nothing(self) -> None:
+        self.assert_ok(self.rename("sample-store", "sample-store-functions"))
+        readme = self.repo / "README.md"
+        heading, rest = readme.read_text(encoding="utf-8").split("\n", 1)
+        # Before the first real block: must not widen that block's removal.
+        readme.write_text(f"{heading}\n\n<!-- rename-site:start -->\n{rest}", encoding="utf-8")
+        self.commit("rename, with a stray marker")
+
+        result = self.remove_skill()
+
+        self.assert_unchanged(result)
+        self.assertIn("対応が取れていません", result.stderr)
 
 
 if __name__ == "__main__":

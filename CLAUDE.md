@@ -12,7 +12,6 @@ Pressable でホスティングする WordPress サイトの構築用テンプ�
 .
 ├── .deployignore          # Pressable のデプロイ対象を制御（最重要。下記「デプロイ」）
 ├── .gitignore             # Git で管理するファイルの許可リスト（Studio サイトの他のファイルは無視）
-├── .claude/skills/rename-site/  # サイト名・テーマ・プラグインの名前の一括変更スキル
 ├── .github/workflows/     # CI: PHPCS / JS Lint / build/ の更新漏れチェック
 ├── .phpcs.xml.dist        # WordPress Coding Standards（テーマ・プラグイン共通）
 ├── bin/studio-prepare.sh  # ローカルサイトを開発用に整える（PHP・環境タイプ・テーマとプラグインの有効化）
@@ -24,6 +23,10 @@ Pressable でホスティングする WordPress サイトの構築用テンプ�
     ├── plugins/pressable-plugin/  # 機能
     └── mu-plugins/local-mail-guard.php  # ローカルでだけメール送信を止める（デプロイしない）
 ```
+
+<!-- rename-site:start -->
+テンプレートには、このほかに `.claude/skills/rename-site/`（サイト名・テーマ・プラグインの名前の一括変更スキル）がある。新しいサイトのリポジトリでは、リネームの最後に `rename.py --remove-skill` で削除する（このような、テンプレートにだけ必要な記述も一緒に消える）。
+<!-- rename-site:end -->
 
 ## テーマとプラグインの役割分担
 
@@ -58,10 +61,15 @@ cd wp-content/plugins/pressable-plugin
 nvm use && npm ci
 npm run build        # npm run start でウォッチ
 npm run lint:js
+```
 
-# rename-site スキルのシナリオテスト（rename.py・テストを変更したとき。リポジトリ直下。注意点は SKILL.md の「スクリプトを変更するとき」）
+<!-- rename-site:start -->
+rename-site スキルのシナリオテスト（rename.py・テストを変更したとき。リポジトリ直下。注意点は SKILL.md の「スクリプトを変更するとき」）:
+
+```bash
 python3 -I .claude/skills/rename-site/scripts/test_rename.py
 ```
+<!-- rename-site:end -->
 
 ## ローカル環境（WordPress Studio）
 
@@ -93,6 +101,6 @@ Studio がサイトのフォルダに生成する説明（`AGENTS.md` → `STUDI
 - PHP は WordPress Coding Standards。接頭辞はテーマ `pressable_theme_` / `PRESSABLE_THEME_`、プラグイン `pressable_plugin_` / `PRESSABLE_PLUGIN_`。テキストドメインは `pressable-theme` / `pressable-plugin`。
 - 出力は必ずエスケープ、入力はサニタイズ。
 - 画面の文言は日本語で直接書く（サイト専用のため翻訳ファイルは用意しない）。
-- サイト名・テーマ・プラグインの名前（スラッグ・Text Domain・接頭辞・ブロックの名前空間を含む）は、新しいサイトを始めた直後に **rename-site スキル**（`.claude/skills/rename-site/`）で一括変更する。手で検索置換しない。公開後・コンテンツ作成後は変更しない（WordPress がスラッグで有効なテーマ・プラグインや保存済みテンプレートを覚えているため）。
+- サイト名・テーマ・プラグインの名前（スラッグ・Text Domain・接頭辞・ブロックの名前空間を含む）は、新しいサイトを始めた直後に **rename-site スキル**で一括変更する。手で検索置換しない。スキルはテンプレート（pressable-site-template）にだけ置き、サイトのリポジトリではリネームの最後に削除する。削除した後に変えるときは、テンプレートの `.claude/skills/rename-site/scripts/rename.py` を `--repo` でサイトのリポジトリを指定して実行する。公開後・コンテンツ作成後は変更しない（WordPress がスラッグで有効なテーマ・プラグインや保存済みテンプレートを覚えているため）。
 - CSS クラスの接頭辞はテーマスラッグ＋ハイフンにそろえる（rename-site スキルでスラッグと一緒に置き換わるようにするため）。
 - バージョン: テーマは style.css の `Version`、プラグインは pressable-plugin.php の `Version` と `PRESSABLE_PLUGIN_VERSION`。

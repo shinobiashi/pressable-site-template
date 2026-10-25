@@ -14,6 +14,15 @@ repository in a single pass. Display names are only rewritten on the specific li
 that carry them, so a generic name never touches unrelated text. Without --dry-run the
 files are rewritten and the theme/plugin directories are renamed (`git mv` when tracked).
 Nothing outside the repository is modified.
+
+The skill only lives in the template. After the rename, a new site's repository removes it:
+
+    python3 -I .claude/skills/rename-site/scripts/rename.py --remove-skill --dry-run
+
+This deletes the skill directory and every block that only the template needs, marked with
+`<!-- rename-site:start -->` ... `<!-- rename-site:end -->` (`# rename-site:start` ...
+`# rename-site:end` in YAML and .gitignore). To rename such a repository later, run the
+template's copy of this script with `--repo <site repository>`.
 """
 
 from __future__ import annotations
@@ -29,6 +38,23 @@ from pathlib import Path
 
 SKILL_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_REPO = Path(__file__).resolve().parents[4]
+SKILL_REL = Path(".claude") / "skills" / "rename-site"
+TEMPLATE_NAME = "pressable-site-template"
+
+# Template-only blocks. A block marker stands alone on its line; an inline marker pair wraps
+# text within one line. The blank line after a block goes with it, so no gap is left behind.
+# A block never spans another start marker, so a stray one is left over (and reported)
+# instead of widening the removal up to the next end marker.
+MARKER_START = r"(?:<!-- rename-site:start -->|# rename-site:start)"
+MARKER_END = r"(?:<!-- rename-site:end -->|# rename-site:end)"
+MARKER_BLOCK_RE = re.compile(
+    rf"^[ \t]*{MARKER_START}[ \t]*\n"
+    rf"(?:(?!{MARKER_START}).)*?"
+    rf"^[ \t]*{MARKER_END}[ \t]*(?:\n|\Z)(?:[ \t]*\n)?",
+    re.M | re.S,
+)
+MARKER_INLINE_RE = re.compile(r" ?<!-- rename-site:start -->[^\n]*?<!-- rename-site:end -->")
+MARKER_RE = re.compile(r"rename-site:(?:start|end)")
 
 SLUG_RE = re.compile(r"^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$")
 # Names are written into PHP/CSS comments, JSON strings and a shell variable.
@@ -100,15 +126,34 @@ def git_files(repo: Path) -> set[Path]:
 
 
 def iter_repo_files(repo: Path):
+    # The skill running this script, and the repository's own copy when run with --repo.
+    skill_dirs = {SKILL_DIR, (repo / SKILL_REL).resolve()}
     for path in sorted(git_files(repo)):
         rel_parts = path.relative_to(repo).parts
         if any(part in SKIP_DIR_NAMES for part in rel_parts):
             continue
         if path.is_symlink() or not path.is_file():
             continue
-        if SKILL_DIR in path.resolve().parents:
+        if skill_dirs & set(path.resolve().parents):
             continue
         yield path
+
+
+def is_template(repo: Path) -> bool:
+    """The template itself (origin is pressable-site-template), not a site created from it."""
+    result = subprocess.run(["git", "-C", str(repo), "remote", "get-url", "origin"], capture_output=True, text=True)
+    if result.returncode != 0:
+        return False
+    name = re.split(r"[/:]", result.stdout.strip().rstrip("/"))[-1]
+    return re.sub(r"\.git$", "", name) == TEMPLATE_NAME
+
+
+def readme_heading(repo: Path) -> str | None:
+    readme = repo / "README.md"
+    if not readme.is_file():
+        return None
+    match = re.match(r"# (.+)", readme.read_text(encoding="utf-8"))
+    return match.group(1).strip() if match else None
 
 
 def find_headers(repo: Path, kind: str, main_file, header_re: str) -> list[tuple[str, str]]:
@@ -152,12 +197,8 @@ def pick(found: list[tuple[str, str]], wanted: str | None, kind: str, flag: str)
 def detect_current(repo: Path, args: argparse.Namespace) -> Identity:
     theme_slug, theme_name = pick(find_themes(repo), args.from_theme_slug, "テーマ", "--from-theme-slug")
     plugin_slug, plugin_name = pick(find_plugins(repo), args.from_plugin_slug, "プラグイン", "--from-plugin-slug")
-    site_name = None
-    readme = repo / "README.md"
-    if readme.is_file():
-        match = re.match(r"# (.+)", readme.read_text(encoding="utf-8"))
-        if match and match.group(1).strip() != "pressable-site-template":
-            site_name = match.group(1).strip()
+    heading = readme_heading(repo)
+    site_name = heading if heading != TEMPLATE_NAME else None
     return Identity(site_name, theme_name, theme_slug, plugin_name, plugin_slug)
 
 
@@ -380,23 +421,115 @@ def studio_notes(repo: Path) -> list[str]:
     ]
 
 
+def strip_markers(text: str) -> str:
+    new_text = MARKER_INLINE_RE.sub("", MARKER_BLOCK_RE.sub("", text))
+    if new_text != text and text.endswith("\n"):
+        # A block at the end of the file would otherwise leave a trailing blank line.
+        new_text = new_text.rstrip("\n") + "\n"
+    return new_text
+
+
+def removal_plan(repo: Path) -> tuple[Path, dict[Path, tuple[str, str]]]:
+    """The skill directory and the files whose template-only blocks are removed."""
+    if is_template(repo):
+        raise RenameError(f"{repo} はテンプレート（{TEMPLATE_NAME}）自身です。スキルはテンプレートに置いておくので、削除しません。")
+    if readme_heading(repo) == TEMPLATE_NAME:
+        raise RenameError("まだ名前を変えていません（README.md の見出しがテンプレートのまま）。名前を変えてから削除してください。")
+    contents = {}
+    for path in iter_repo_files(repo):
+        text = read_text(path)
+        if text is None or not MARKER_RE.search(text):
+            continue
+        new_text = strip_markers(text)
+        if MARKER_RE.search(new_text):
+            raise RenameError(f"{path.relative_to(repo)} の rename-site:start と rename-site:end の対応が取れていません。")
+        contents[path] = (text, new_text)
+    return repo / SKILL_REL, contents
+
+
+def apply_removal(repo: Path, skill_dir: Path, contents: dict[Path, tuple[str, str]]) -> None:
+    if skill_dir.is_dir():
+        if is_git_tracked(repo, skill_dir):
+            result = subprocess.run(
+                ["git", "-C", str(repo), "rm", "-r", "-q", "--", str(skill_dir.relative_to(repo))],
+                capture_output=True, text=True,
+            )
+            if result.returncode != 0:
+                raise RenameError(f"スキルを削除できませんでした（何も変更していません）: {result.stderr.strip()}")
+        if skill_dir.exists():
+            shutil.rmtree(skill_dir)  # Untracked leftovers such as __pycache__/.
+        for parent in (skill_dir.parent, skill_dir.parent.parent):
+            if parent.is_dir() and not any(parent.iterdir()):
+                parent.rmdir()
+    for path, (_, new_text) in contents.items():
+        path.write_text(new_text, encoding="utf-8")
+
+
+def remove_skill(repo: Path, dry_run: bool) -> int:
+    try:
+        skill_dir, contents = removal_plan(repo)
+    except RenameError as error:
+        print(f"エラー: {error}", file=sys.stderr)
+        return 1
+
+    print(f"リポジトリ: {repo}")
+    if not skill_dir.is_dir() and not contents:
+        print("削除するものはありません（スキルもテンプレート用の記述もありません）。")
+        return 0
+    print("削除するもの:")
+    if skill_dir.is_dir():
+        print(f"  {skill_dir.relative_to(repo)}/（このスキル）")
+    for path, (text, _) in sorted(contents.items()):
+        count = len(MARKER_BLOCK_RE.findall(text)) + len(MARKER_INLINE_RE.findall(MARKER_BLOCK_RE.sub("", text)))
+        print(f"  {path.relative_to(repo)}（テンプレート用の記述 {count} か所）")
+
+    if dry_run:
+        print("\n--dry-run のため、何も削除していません。")
+        return 0
+
+    try:
+        apply_removal(repo, skill_dir, contents)
+    except RenameError as error:
+        print(f"エラー: {error}", file=sys.stderr)
+        return 1
+    print("\n削除しました。")
+    print(f"名前をもう一度変えるときは、テンプレート（{TEMPLATE_NAME}）の {SKILL_REL / 'scripts' / 'rename.py'} を、"
+          "--repo でこのリポジトリのルートを指定して実行してください。")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="サイト名・テーマ・プラグインの名前を一括で変更する。")
-    parser.add_argument("--site-name", required=True, help="サイト名（例: サンプル商店）")
-    parser.add_argument("--theme-name", required=True, help="テーマ名（例: Sample Store）")
-    parser.add_argument("--theme-slug", required=True, help="テーマスラッグ（例: sample-store）")
-    parser.add_argument("--plugin-name", required=True, help="プラグイン名（例: Sample Store Functions）")
-    parser.add_argument("--plugin-slug", required=True, help="プラグインスラッグ（例: sample-store-functions）")
+    parser.add_argument("--site-name", help="サイト名（例: サンプル商店）")
+    parser.add_argument("--theme-name", help="テーマ名（例: Sample Store）")
+    parser.add_argument("--theme-slug", help="テーマスラッグ（例: sample-store）")
+    parser.add_argument("--plugin-name", help="プラグイン名（例: Sample Store Functions）")
+    parser.add_argument("--plugin-slug", help="プラグインスラッグ（例: sample-store-functions）")
     parser.add_argument("--from-theme-slug", help="変更元のテーマスラッグ（テーマが複数あるときだけ指定）")
     parser.add_argument("--from-plugin-slug", help="変更元のプラグインスラッグ（プラグインが複数あるときだけ指定）")
     parser.add_argument("--repo", type=Path, default=DEFAULT_REPO, help="リポジトリのルート（既定: このスクリプトの位置から算出）")
     parser.add_argument("--dry-run", action="store_true", help="変更内容を表示するだけで書き込まない")
+    parser.add_argument("--remove-skill", action="store_true",
+                        help="名前を変えた後に、このスキルとテンプレート用の記述をリポジトリから削除する")
     args = parser.parse_args()
 
     repo = args.repo.resolve()
+    name_args = ("site_name", "theme_name", "theme_slug", "plugin_name", "plugin_slug")
+    if args.remove_skill:
+        if any(getattr(args, name) is not None for name in name_args):
+            parser.error("--remove-skill は名前の引数と一緒に使えません。名前を変えてから、別に実行してください。")
+        return remove_skill(repo, args.dry_run)
+    missing = [f"--{name.replace('_', '-')}" for name in name_args if getattr(args, name) is None]
+    if missing:
+        parser.error(f"次の引数が必要です: {' '.join(missing)}")
     new = Identity(args.site_name.strip(), args.theme_name.strip(), args.theme_slug, args.plugin_name.strip(), args.plugin_slug)
 
     try:
+        if is_template(repo):
+            raise RenameError(
+                f"{repo} はテンプレート（{TEMPLATE_NAME}）自身なので、名前を変えません。"
+                "テンプレートから作ったサイトのリポジトリで実行するか、--repo でそのリポジトリを指定してください。"
+            )
         current = detect_current(repo, args)
         warnings = validate(new, current, repo)
         plan = build_plan(repo, current, new)
@@ -458,6 +591,8 @@ def main() -> int:
     print(f"  1. cd {plugin_rel} && nvm use && npm ci && npm run build && npm run lint:js   # build/ を作り直し、整形を確かめる")
     print("  2. composer lint   # リポジトリのルートで")
     print("  3. Studio サイトのフォルダなら bin/studio-prepare.sh を実行する（新しいスラッグで有効化）")
+    if (repo / SKILL_REL).is_dir():
+        print(f"  4. python3 -I {SKILL_REL / 'scripts' / 'rename.py'} --remove-skill   # このスキルをリポジトリから削除する")
     return 0
 
 
