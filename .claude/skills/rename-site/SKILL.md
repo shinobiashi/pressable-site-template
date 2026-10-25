@@ -56,11 +56,11 @@ description: このリポジトリ（Pressable サイトテンプレート）の
 
 3. **適用する。** 同じコマンドを `--dry-run` なしで実行する。最後に古い名前の残り・JSON・PHP 構文を自動でチェックし、問題があれば終了コード 2 で一覧を出す。その場合は内容を確認して直す。
 
-4. **ブロックを再ビルドする。** build/ の中身はテキスト置換済みで動くが、`index.asset.php` のバージョンハッシュが古いままで、CI の「build/ の更新漏れチェック」で落ちる。再ビルドが必要。
+4. **ブロックを再ビルドし、JS の lint を実行する。** build/ の中身はテキスト置換済みで動くが、`index.asset.php` のバージョンハッシュが古いままで、CI の「build/ の更新漏れチェック」で落ちる。再ビルドが必要。また、Text Domain の長さが変わると Prettier の折り返し位置が変わり（`__( '…', '<スラッグ>' )` が 1 行に収まるようになる、など）、CI の `lint:js` で落ちることがある。エラーが出たら `npx wp-scripts lint-js src --fix` で直す（整形だけなので build/ の出力は変わらない）。
 
    ```bash
    cd wp-content/plugins/<新しいプラグインスラッグ>
-   nvm use && npm ci && npm run build
+   nvm use && npm ci && npm run build && npm run lint:js
    ```
 
 5. **PHPCS を実行する。** リポジトリのルートで `composer install`（未実施なら）→ `composer lint`。接頭辞が変わっても WPCS の設定（`.phpcs.xml.dist`）は一緒に書き換わっているので、エラーが出たら置換漏れを疑う。
