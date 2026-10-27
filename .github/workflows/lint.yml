@@ -26,13 +26,14 @@ jobs:
       - run: composer lint
 
   deployignore:
-    name: .deployignore covers the theme and plugin
+    name: Deploy contents (theme and plugin)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
 
-      # Pressable deploys only what .deployignore reopens, so a new file or folder
-      # directly under the theme or the plugin needs a "!" line there.
+      # Pressable deploys the theme and the plugin as whole folders, so no
+      # development file may be tracked inside them, and each must be reopened
+      # in .deployignore.
       - run: bash bin/check-deployignore.sh
 
   # rename-site:start
@@ -51,15 +52,15 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: wp-content/plugins/pressable-plugin
+        working-directory: blocks
     steps:
       - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v7
         with:
-          node-version-file: wp-content/plugins/pressable-plugin/.nvmrc
+          node-version-file: blocks/.nvmrc
           cache: npm
-          cache-dependency-path: wp-content/plugins/pressable-plugin/package-lock.json
+          cache-dependency-path: blocks/package-lock.json
 
       - run: npm ci
 
@@ -67,11 +68,12 @@ jobs:
 
       - run: npm run build
 
-      # Pressable does not build on deploy, so the committed build/ must match src/.
+      # Pressable does not build on deploy, so the committed build/ of the plugin
+      # must match blocks/src/.
       - name: Check that build/ is committed and up to date
         run: |
-          if [ -n "$(git status --porcelain -- build)" ]; then
-            git status --porcelain -- build
-            echo "::error::build/ is out of date. Run 'npm run build' and commit the result."
+          if [ -n "$(git status --porcelain -- ../wp-content/plugins/pressable-plugin/build)" ]; then
+            git status --porcelain -- ../wp-content/plugins/pressable-plugin/build
+            echo "::error::wp-content/plugins/pressable-plugin/build/ is out of date. Run 'npm run build' in blocks/ and commit the result."
             exit 1
           fi

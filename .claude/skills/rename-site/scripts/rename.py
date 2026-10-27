@@ -272,18 +272,18 @@ def line_rules(repo: Path, current: Identity, new: Identity):
          re.compile(r"^ \* .+ setup\.$", re.M), f" * {new.theme_name} setup."),
         (theme / "assets" / "css" / "theme.css", "テーマ名（theme.css の先頭コメント）",
          re.compile(r"^/\* .+? — 補助スタイル", re.M), f"/* {new.theme_name} — 補助スタイル"),
-        (theme / "CLAUDE.md", "テーマ名（テーマの CLAUDE.md の見出し）",
-         re.compile(r"^# CLAUDE\.md — .+ 開発ガイド$", re.M), f"# CLAUDE.md — {new.theme_name} 開発ガイド"),
+        (repo / ".claude" / "rules" / "theme.md", "テーマ名（テーマの開発ガイドの見出し）",
+         re.compile(r"^# .+ 開発ガイド$", re.M), f"# {new.theme_name} 開発ガイド"),
         (plugin / f"{current.plugin_slug}.php", "プラグイン名（Plugin Name）",
          re.compile(r"^( \* Plugin Name:\s*).*$", re.M), rf"\g<1>{new.plugin_name}"),
         (plugin / f"{current.plugin_slug}.php", "プラグインの説明文のサイト名（Description）",
          re.compile(r"^( \* Description:\s*)(?:サイト固有の機能|.+?の機能)（独自ブロック", re.M),
          rf"\g<1>{site}の機能（独自ブロック"),
-        (plugin / "package.json", "プラグイン名（package.json の description）",
+        (repo / "blocks" / "package.json", "プラグイン名（blocks/package.json の description）",
          re.compile(r'^(\s*"description": ").+ の独自ブロックのビルド環境(",?)$', re.M),
          rf"\g<1>{new.plugin_name} の独自ブロックのビルド環境\g<2>"),
-        (plugin / "CLAUDE.md", "プラグイン名（プラグインの CLAUDE.md の見出し）",
-         re.compile(r"^# CLAUDE\.md — .+ 開発ガイド$", re.M), f"# CLAUDE.md — {new.plugin_name} 開発ガイド"),
+        (repo / ".claude" / "rules" / "plugin.md", "プラグイン名（プラグインの開発ガイドの見出し）",
+         re.compile(r"^# .+ 開発ガイド$", re.M), f"# {new.plugin_name} 開発ガイド"),
         (repo / "README.md", "サイト名（README.md の見出し）",
          re.compile(r"\A# .+$", re.M), f"# {site}"),
         (repo / "README.md", "サイト名（README.md の冒頭の説明）",
@@ -634,10 +634,9 @@ def main() -> int:
             print(f"  {problem}")
         return 2
 
-    plugin_rel = Path("wp-content") / "plugins" / new.plugin_slug
     print("自動チェック: 古い名前の残り・JSON・PHP 構文（php があれば）に問題はありません。")
     print("\n次の作業:")
-    print(f"  1. cd {plugin_rel} && nvm use && npm ci && npm run build && npm run lint:js   # build/ を作り直し、整形を確かめる")
+    print("  1. cd blocks && nvm use && npm ci && npm run build && npm run lint:js   # プラグインの build/ を作り直し、整形を確かめる")
     print("  2. composer lint   # リポジトリのルートで")
     print("  3. Studio サイトのフォルダなら bin/studio-prepare.sh を実行する（新しいスラッグで有効化）")
     if (repo / SKILL_REL).is_dir():

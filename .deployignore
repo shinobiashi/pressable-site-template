@@ -11,11 +11,18 @@
 # mu-plugins, files placed via SFTP, etc.) untouched.
 #
 # When you commit another theme or plugin to this repository, add a "!" line for
-# it in the matching block below, and open its runtime files in the same way as
-# pressable-theme / pressable-plugin (see "Inside our theme and plugin").
+# it in the matching block below.
 #
-# When you add a file or folder directly under the theme or the plugin, add a "!"
-# line for it, or it is not deployed. CI checks this (bin/check-deployignore.sh).
+# The theme and the plugin are deployed as whole folders, so keep development
+# files (guides, block sources, package.json, ...) OUT of them. Seen on 2026-10-27
+# on a site made from this template: CLAUDE.md, src/ and package-lock.json inside
+# the theme and plugin reached production although lines in this file excluded
+# them, and a sandbox deploy of a branch did not follow that branch's changes to
+# this file. So this file is not relied on for anything inside
+# wp-content/themes/<slug>/ or wp-content/plugins/<slug>/: the block build
+# environment lives in blocks/ and the theme / plugin guides in .claude/rules/.
+# CI checks that no development file is tracked inside the theme or the plugin
+# (bin/check-deployignore.sh).
 
 # ---- Allowlist: deploy only our theme and plugin ----
 # Everything directly under the site root except wp-content/.
@@ -35,45 +42,11 @@ wp-content/themes/*
 wp-content/plugins/*
 !wp-content/plugins/pressable-plugin/
 
-# ---- Inside our theme and plugin: deploy only the runtime files ----
-# Seen on 2026-10-27 on the production of a site made from this template:
-# CLAUDE.md, src/ and package-lock.json in the theme and plugin were deployed
-# although "Development files" below lists them. Inferred from that: Pressable
-# does not apply such later lines inside a directory that a "!" line brought
-# back.
-#
-# So each directory is closed again with "<dir>/*" right after "!<dir>/", and
-# only its runtime files are reopened. This is the shape of the levels above
-# ("wp-content/*" after "!wp-content/", which keeps WooCommerce on the server),
-# one level deeper. Not verified on Pressable yet: this shape at this depth, and
-# reopening a single file (style.css, functions.php, pressable-plugin.php, ...).
-# Check both on a staging site before relying on them, and update this comment.
-#
-# Reopen only what is in the repository: a "!" line for a missing file would
-# un-protect a file with that name on the server, and Sync-As-Is would delete it
-# (bin/check-deployignore.sh checks this). When you add screenshot.png, add its
-# line too.
-wp-content/themes/pressable-theme/*
-!wp-content/themes/pressable-theme/assets/
-!wp-content/themes/pressable-theme/functions.php
-!wp-content/themes/pressable-theme/parts/
-!wp-content/themes/pressable-theme/patterns/
-!wp-content/themes/pressable-theme/style.css
-!wp-content/themes/pressable-theme/styles/
-!wp-content/themes/pressable-theme/templates/
-!wp-content/themes/pressable-theme/theme.json
-
-wp-content/plugins/pressable-plugin/*
-!wp-content/plugins/pressable-plugin/build/
-!wp-content/plugins/pressable-plugin/includes/
-!wp-content/plugins/pressable-plugin/pressable-plugin.php
-
 # ---- Development files (never deployed) ----
 # Repository root files are already covered by "/*"; they are listed again so
-# they are not published even if "/*" is not supported. Inside the theme and
-# the plugin, these lines did not keep CLAUDE.md, src/ or package-lock.json out
-# (see above), so files there are kept out by not reopening them. .DS_Store and
-# *.log never reach the repository (.gitignore), so they are not deployed.
+# they are not published even if "/*" is not supported. These lines do not keep
+# files inside the theme or the plugin out (see the top of this file). .DS_Store
+# and *.log never reach the repository (.gitignore), so they are not deployed.
 .DS_Store
 **/*.log
 .claude/
@@ -85,11 +58,7 @@ wp-content/plugins/pressable-plugin/*
 CLAUDE.md
 README.md
 bin/*
+blocks/
 composer.json
 composer.lock
 docs/
-node_modules/
-package.json
-package-lock.json
-.nvmrc
-wp-content/plugins/pressable-plugin/src/

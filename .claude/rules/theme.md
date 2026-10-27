@@ -1,4 +1,11 @@
-# CLAUDE.md — Pressable Theme 開発ガイド
+---
+paths:
+  - "wp-content/themes/pressable-theme/**"
+---
+
+# Pressable Theme 開発ガイド
+
+テーマ（`wp-content/themes/pressable-theme/`）のファイルを読み書きするときに Claude Code が読み込むガイドです。テーマのフォルダは本番にそのままデプロイされるので、このガイドはテーマの外（`.claude/rules/`）に置いています。
 
 Pressable で構築するサイト用の **WordPress ブロックテーマ（FSE）** です。見た目（デザイントークン・テンプレート・パターン・CSS）だけを担当し、機能は `wp-content/plugins/pressable-plugin` が担当します（役割分担はリポジトリ直下の CLAUDE.md を参照）。
 
@@ -23,7 +30,7 @@ pressable-theme/
 └── assets/css/theme.css # theme.json で書けない装飾（カード・お知らせ一覧・商品カード等）
 ```
 
-- 本番にデプロイされるのは、リポジトリ直下の `.deployignore` で `!` の行があるものだけ（上の一覧。この CLAUDE.md は届かない）。テーマの直下にファイルやフォルダを足したら `.deployignore` に `!` の行を足す。`bash bin/check-deployignore.sh` が漏れを検出する。
+- テーマのフォルダは丸ごと本番にデプロイされる。**本番で使わないファイル（説明の Markdown・ソース・設定ファイルなど）をテーマのフォルダに置かない**（Pressable では、`!` で戻したフォルダの中を `.deployignore` で除外できないため）。置いた場合は CI の `bin/check-deployignore.sh` が検出する。
 
 ## デザイントークン（theme.json が正・ハードコード禁止）
 
@@ -72,7 +79,7 @@ pressable-theme/
 2. theme.json のパレット値（色の slug はそのまま）とフォント
 3. parts/footer.html の住所・電話、フッターのリンク先
 4. patterns/hero.php・features.php・cta.php の文言とリンク先（`/contact/`・`/company/` を前提にしている）
-5. screenshot.png（1200×900）を追加する（`.deployignore` に `!wp-content/themes/pressable-theme/screenshot.png` の行も足す）
+5. screenshot.png（1200×900）を追加する
 
 ## 導入時セットアップ（クライアント向けメモ）
 

@@ -7,6 +7,7 @@ Pressable でホスティングする WordPress サイトを構築するため�
 | --- | --- |
 | `wp-content/themes/pressable-theme/` | ブロックテーマ（FSE）。デザイントークン・テンプレート・パターン・CSS（見た目） |
 | `wp-content/plugins/pressable-plugin/` | サイト固有の機能。独自ブロック・WooCommerce のカスタマイズなど |
+| `blocks/` | プラグインの独自ブロックのソースとビルド環境。ビルドの出力はプラグインの `build/`（このフォルダはデプロイしない） |
 
 ローカルでは、このリポジトリを [WordPress Studio](https://developer.wordpress.com/studio/) のサイトのフォルダにそのまま置きます。WordPress 本体・データベース・uploads・管理画面から入れるプラグイン（WooCommerce など）も同じフォルダにありますが、`.gitignore` で Git の管理から外しています。
 
@@ -28,13 +29,15 @@ flowchart LR
 ```text
 .
 ├── .deployignore          # Pressable のデプロイ対象（テーマとプラグインだけをデプロイする許可リスト）
-├── .github/workflows/     # CI（PHPCS・JS Lint・build/ の更新漏れ・.deployignore のチェック）
+├── .claude/rules/         # テーマ（theme.md）とプラグイン（plugin.md）の開発ガイド（Claude Code 向け）
+├── .github/workflows/     # CI（PHPCS・JS Lint・build/ の更新漏れ・デプロイされる中身のチェック）
 ├── .gitignore             # Git で管理するファイルの許可リスト（Studio サイトの他のファイルは無視）
 ├── .phpcs.xml.dist        # WordPress Coding Standards の設定
 ├── bin/
-│   ├── check-deployignore.sh  # テーマ・プラグインの全ファイルが .deployignore で戻されているかを確認
+│   ├── check-deployignore.sh  # テーマ・プラグインが .deployignore で戻されていて、中に開発用ファイルが無いかを確認
 │   ├── studio-prepare.sh  # ローカルサイトを開発用に整える（PHP・環境タイプ・有効化）
 │   └── studio-pull.sh     # 本番からデータベースと uploads だけを pull する
+├── blocks/                # プラグインの独自ブロックのビルド環境（src/・package.json・.nvmrc）。出力はプラグインの build/
 ├── composer.json          # 開発ツール（PHPCS）
 ├── CLAUDE.md              # 開発ルール（Claude Code 向け。人が読んでもよい）
 ├── docs/                  # レビューのバックログ・ベースライン
@@ -79,7 +82,7 @@ flowchart LR
 
 6. **コミットして GitHub に push する。** その後、下記「Pressable へのデプロイ設定」で GitHub 連携を設定します。初回のデプロイが済んだら、本番の管理画面でテーマとプラグインを有効化します。
 
-7. **中身を差し替える。** テーマは `wp-content/themes/pressable-theme/CLAUDE.md` の「新しいサイトで最初に置き換える箇所」を参照し、機能は `wp-content/plugins/pressable-plugin/` に追加します。
+7. **中身を差し替える。** テーマは `.claude/rules/theme.md` の「新しいサイトで最初に置き換える箇所」を参照し、機能は `wp-content/plugins/pressable-plugin/` に追加します。
 
 <!-- rename-site:start -->
 ## サイト名・テーマ・プラグインの名前を変更する（rename-site スキル）
@@ -125,9 +128,9 @@ Claude Code で、サイト名・テーマ名とスラッグ・プラグイン�
 | PHP の関数・変数・定数の接頭辞 | `sample_store_` / `SAMPLE_STORE_`、`sample_store_functions_` / `SAMPLE_STORE_FUNCTIONS_` |
 | CSS クラス・パターン | `sample-store-card` などのクラス、`sample-store/hero` などのパターン、パターンカテゴリ |
 | ブロック | `sample-store-functions/copyright`（テーマのフッターの参照も含む） |
-| 設定ファイル | `.gitignore`、`.deployignore`、`.phpcs.xml.dist`、CI（`.github/workflows/lint.yml`）、`bin/studio-*.sh`、package.json |
+| 設定ファイル | `.gitignore`、`.deployignore`、`.phpcs.xml.dist`、CI（`.github/workflows/lint.yml`）、`bin/studio-*.sh`、`blocks/package.json` |
 | 名前 | `Theme Name`・`Plugin Name`、説明文のサイト名、README.md の見出し |
-| ドキュメント | README.md・各 CLAUDE.md の中のパスや名前 |
+| ドキュメント | README.md・CLAUDE.md・`.claude/rules/` の開発ガイドの中のパスや名前 |
 
 ### Claude Code を使わずに実行する場合
 
@@ -143,7 +146,7 @@ python3 -I .claude/skills/rename-site/scripts/rename.py \
 
 実行後は次の 4 つを行ってください。
 
-1. プラグインのディレクトリで `npm ci && npm run build && npm run lint:js`（build/ の作り直しと、整形の確認。lint のエラーは `npx wp-scripts lint-js src --fix` で直る）
+1. `blocks/` で `npm ci && npm run build && npm run lint:js`（プラグインの build/ の作り直しと、整形の確認。lint のエラーは `blocks/` で `npx wp-scripts lint-js src --fix` を実行すると直る）
 2. リポジトリのルートで `composer lint`
 3. `bin/studio-prepare.sh`
 4. リポジトリのルートで `python3 -I .claude/skills/rename-site/scripts/rename.py --remove-skill`（このスキルの削除。先に `--dry-run` を付けて確認できる）
@@ -192,7 +195,7 @@ studio wp plugin list        # WP-CLI は必ず studio wp 経由で実行する
 bin/studio-prepare.sh        # PHP・環境タイプ・デバッグログを整え、テーマとプラグインを有効化する
 ```
 
-- テーマ・プラグインのファイルを編集すると、そのままローカルサイトに反映されます。ブロックを編集するときは `npm run start` でビルドしながら確認します。
+- テーマ・プラグインのファイルを編集すると、そのままローカルサイトに反映されます。ブロックを編集するときは `blocks/` で `npm run start` を実行し、ビルドしながら確認します。
 - PHP のエラーは `wp-content/debug.log` に記録されます。画面にも表示したい場合は `studio config set --debug-display` を実行します。
 
 ### 本番のコンテンツを取り込む（データベースと uploads）
@@ -230,7 +233,7 @@ bin/studio-pull.sh --remote-site https://staging-xxxx.example.com  # 別の環�
 - **`studio delete` はフォルダごとゴミ箱に移す。** 既定ではサイトのフォルダ、つまりリポジトリごとゴミ箱に移します。Studio から外すだけなら `studio delete --no-files` を使います。
 - **本番のデータの扱いに注意する。** ローカルのデータベースには本番の顧客情報が入ります。PC の管理に注意してください。データベースのファイル（`wp-content/database/`）は `.gitignore` によりコミットされません。
 - **リポジトリに入れるファイルを増やすとき。** ルートにファイルを追加したり、別のテーマ・プラグインをリポジトリに入れたりする場合は、`.gitignore` と `.deployignore` の両方に `!` の行を追加します。
-- **テーマ・プラグインの直下にファイルやフォルダを足すとき。** `.deployignore` に `!` の行を追加します。テーマとプラグインの中は、動作に要るものだけを戻す許可リストになっているため、足さないと本番に届きません。後ろの行で除外していた CLAUDE.md や `src/` などの開発用ファイルが、このテンプレートから作ったサイトの本番に届いていたため（2026-10-27）、これらは「戻さない」ことで本番から外しています。リポジトリに無いファイルの `!` の行も足しません（本番に同じ名前のファイルがあると削除されるため）。漏れは `bash bin/check-deployignore.sh`（CI でも実行）で分かります。
+- **テーマ・プラグインのフォルダに開発用のファイルを置かない。** テーマとプラグインのフォルダは丸ごと本番にデプロイされ、`.deployignore` で中のファイルを除外できませんでした（2026-10-27 に、このテンプレートから作ったサイトの本番に CLAUDE.md や `src/` が届いていた）。ブロックのビルド環境は `blocks/`、Claude Code 向けのガイドは `.claude/rules/` に置いています。テーマやプラグインの中に置くと、`bash bin/check-deployignore.sh`（CI でも実行）が検出します。
 - **対応 OS。** `bin/` のスクリプトは macOS 向けです。
 
 ## 開発
@@ -240,14 +243,14 @@ bin/studio-pull.sh --remote-site https://staging-xxxx.example.com  # 別の環�
 composer install
 composer lint            # 自動修正は composer lint:fix
 
-# 独自ブロック（pressable-plugin）
-cd wp-content/plugins/pressable-plugin
+# 独自ブロック（pressable-plugin）。ビルド環境は blocks/、出力先はプラグインの build/
+cd blocks
 nvm use && npm ci
-npm run build            # src/ → build/。開発中は npm run start
+npm run build            # blocks/src/ → wp-content/plugins/pressable-plugin/build/。開発中は npm run start
 npm run lint:js
 ```
 
-Pressable はデプロイ時にビルドしないため、**`build/` はコミットします**。CI（`.github/workflows/lint.yml`）が PHPCS・ESLint・build/ の更新漏れをチェックします。<!-- rename-site:start -->テンプレートでは、rename-site スキルのシナリオテスト（`python3 -I .claude/skills/rename-site/scripts/test_rename.py`）も実行します。<!-- rename-site:end -->
+Pressable はデプロイ時にビルドしないため、**`build/` はコミットします**。CI（`.github/workflows/lint.yml`）が PHPCS・ESLint・build/ の更新漏れ・デプロイされる中身（`bin/check-deployignore.sh`）をチェックします。<!-- rename-site:start -->テンプレートでは、rename-site スキルのシナリオテスト（`python3 -I .claude/skills/rename-site/scripts/test_rename.py`）も実行します。<!-- rename-site:end -->
 
 ## Pressable へのデプロイ設定
 
@@ -267,6 +270,7 @@ Pressable のデプロイは **Sync-As-Is** 方式で、**デプロイ先にあ�
 
 - `.deployignore` は連携を有効にする **前に** main へ push しておきます。
 - リポジトリに別のテーマ・プラグインを追加した場合は、`.deployignore` に `!wp-content/plugins/<スラッグ>/` のような行を追加します（追加しないとデプロイされません）。
+- テーマとプラグインのフォルダは丸ごとデプロイされます。`.deployignore` で中のファイルを除外することはできなかったので、開発用のファイルはフォルダの外（`blocks/`・`.claude/rules/`）に置いています。
 - Pressable のドキュメントは `.deployignore` を「gitignore に近い書式」としていますが、先頭の `/`（ルート基準）の扱いは明記されていません。そのため `wp-content/` 配下の行はドキュメントの例と同じ先頭 `/` なしの書き方にしてあり、`/` が解釈されない場合でも他のプラグイン・翻訳ファイル・mu-plugins は保護されます（その場合に消える可能性があるのは、サイト直下に SFTP などで置いた独自ファイルだけです）。
 - **初回はバックアップを取ったうえでステージングサイトで試し**、管理画面から入れたプラグインや翻訳ファイルが残ること、テーマとプラグインが更新されること、README.md などの開発用ファイルがサーバーに置かれていないことを確認してから本番に設定してください。
 

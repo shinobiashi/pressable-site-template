@@ -2,9 +2,9 @@
 
 Pressable でホスティングする WordPress サイトの構築用テンプレートです。**リポジトリのルートが Pressable の `/htdocs`（サイトのルート）と、ローカルの WordPress Studio のサイトのフォルダを兼ねます。** Git で管理するのはテーマ `pressable-theme` とプラグイン `pressable-plugin` と開発用ファイルだけで、同じフォルダにある WordPress 本体・データベース・uploads・管理画面から入れたプラグインは `.gitignore` で除外しています。
 
-詳細はそれぞれのガイドを参照:
-- テーマ: `wp-content/themes/pressable-theme/CLAUDE.md`
-- プラグイン: `wp-content/plugins/pressable-plugin/CLAUDE.md`
+詳細はそれぞれのガイドを参照（テーマ・プラグインのファイルを読み書きすると Claude Code が自動で読み込む。テーマとプラグインのフォルダは本番にデプロイされるので、ガイドはその外に置いている）:
+- テーマ: `.claude/rules/theme.md`
+- プラグイン（独自ブロックの `blocks/` を含む）: `.claude/rules/plugin.md`
 
 ## ディレクトリ構成
 
@@ -12,11 +12,13 @@ Pressable でホスティングする WordPress サイトの構築用テンプ�
 .
 ├── .deployignore          # Pressable のデプロイ対象を制御（最重要。下記「デプロイ」）
 ├── .gitignore             # Git で管理するファイルの許可リスト（Studio サイトの他のファイルは無視）
-├── .github/workflows/     # CI: PHPCS / JS Lint / build/ の更新漏れ / .deployignore のチェック
-├── .phpcs.xml.dist        # WordPress Coding Standards（テーマ・プラグイン共通）
-├── bin/check-deployignore.sh  # テーマ・プラグインの全ファイルが .deployignore で戻されているかを確認（CI でも実行）
+├── .claude/rules/         # テーマ（theme.md）とプラグイン（plugin.md）の開発ガイド。該当するファイルを触ると読み込まれる
+├── .github/workflows/     # CI: PHPCS / JS Lint / build/ の更新漏れ / デプロイされる中身のチェック
+├── .phpcs.xml.dist        # WordPress Coding Standards（テーマ・プラグイン・blocks/src 共通）
+├── bin/check-deployignore.sh  # テーマ・プラグインが .deployignore で戻されていて、中に開発用ファイルが無いかを確認（CI でも実行）
 ├── bin/studio-prepare.sh  # ローカルサイトを開発用に整える（PHP・環境タイプ・テーマとプラグインの有効化）
 ├── bin/studio-pull.sh     # 本番からデータベースと uploads だけを pull する
+├── blocks/                # プラグインの独自ブロックのビルド環境（src/・package.json・.nvmrc）。出力はプラグインの build/（デプロイしない）
 ├── composer.json          # PHPCS などの開発ツール（デプロイしない）
 ├── docs/                  # review-backlog.md / review-baseline.md（レビュー運用）
 └── wp-content/
@@ -47,10 +49,10 @@ Pressable でホスティングする WordPress サイトの構築用テンプ�
 - Pressable の設定: **Repository Subdirectory・Destination Path とも空欄**（リポジトリのルート = `/htdocs`）。`.deployignore` はこの前提で書いてある。設定を変える場合は `.deployignore` のパスも見直す。
 - Pressable のデプロイは **Sync-As-Is**: デプロイ先にあってリポジトリに無いファイルは **削除される**。自動で保護されるのは WordPress 本体・uploads・wp-config.php・一部の管理プラグインなどだけ。
 - `.deployignore` に一致したパスはデプロイも削除もされない。これを利用して **許可リスト方式**（`/*` で全体を対象外にし、`!` でテーマとプラグインだけを戻す）にしてあり、WooCommerce など管理画面から入れたプラグイン、`languages/`、`mu-plugins/` を守っている。
-- **`!` で戻したフォルダの中は、後ろの行で除外できないと考える。** 確認した事実は、2026-10-27 に、このテンプレートから作った案件サイトの本番で、`.deployignore` の後ろの行で除外していたテーマとプラグインの `CLAUDE.md`・`src/`・`package-lock.json` が届いていたこと。ここからの推定として、テーマとプラグインの中も `wp-content/themes/pressable-theme/*` で一度閉じてから、動作に要るファイル・フォルダだけを `!` で戻している。除外したいものは「後ろに除外の行を足す」のではなく「`!` で戻さない」ことで外す。**この深さでの閉じ直しと、ファイル単位の `!` の行（`style.css` など）は、Pressable ではまだ確かめていない**（ステージングで確かめたら、ここと `.deployignore` のコメントを更新する）。
+- **テーマとプラグインのフォルダは丸ごとデプロイされる。中に開発用のファイル（説明の Markdown・ブロックのソース・`package.json`・`.nvmrc` など）を置かない。** 2026-10-27 に、このテンプレートから作った案件サイトの本番に、`.deployignore` で除外していたテーマとプラグインの `CLAUDE.md`・`src/`・`package-lock.json` が届いていた。サンドボックスで試すと、ブランチの `.deployignore` を変えてもデプロイされるものは変わらず、Pressable がどの `.deployignore` をいつ読むのかも分からなかった。そこで、テーマとプラグインの中は `.deployignore` に頼らず、開発用のファイルを外に置く（ブロックのビルド環境は `blocks/`、ガイドは `.claude/rules/`）。CI の `bin/check-deployignore.sh` が、中に置かれた開発用のファイルを検出する。
 - **リポジトリに無いものを `!` で戻さない。** 本番に同じ名前のファイルがあると、守られなくなって Sync-As-Is で削除される（`bin/check-deployignore.sh` が検出する）。
-- **テーマ・プラグインの直下にファイルやフォルダを足したら `.deployignore` に `!` の行を足す**（足さないと本番に届かない。CI の `bin/check-deployignore.sh` が漏れと、開発用ファイルの戻しすぎを検出する。戻したフォルダの中に置いた開発用ファイル（`assets/CLAUDE.md` など）も検出する）。**リポジトリに別のテーマ・プラグインを追加したら**、同じ形（`!<dir>/`・`<dir>/*`・中身の `!` の行）で足す。
-- `.deployignore` の許可リスト（`/*`・`wp-content/*`・`wp-content/themes/*`・`wp-content/plugins/*`・テーマとプラグインの `<dir>/*` の行）を消したり緩めたりしない。`wp-content/` 配下の行に先頭 `/` を付けない（Pressable のドキュメントは先頭 `/` の扱いを明記しておらず、解釈されないと保護が外れるため）。本番のプラグインや翻訳ファイルが削除される事故につながる。変更する場合は必ずユーザーに確認し、ステージングで試してもらう。
+- **リポジトリに別のテーマ・プラグインを追加したら `.deployignore` に `!` の行を足す**（足さないと本番に届かない。CI が検出する）。
+- `.deployignore` の許可リスト（`/*`・`wp-content/*`・`wp-content/themes/*`・`wp-content/plugins/*` の行）を消したり緩めたりしない。`wp-content/` 配下の行に先頭 `/` を付けない（Pressable のドキュメントは先頭 `/` の扱いを明記しておらず、解釈されないと保護が外れるため）。本番のプラグインや翻訳ファイルが削除される事故につながる。変更する場合は必ずユーザーに確認し、ステージングで試してもらう。
 - デプロイ時にビルドは走らない。`wp-content/plugins/pressable-plugin/build/` はコミットする。
 - 設定したブランチ（通常 main）への push で自動デプロイされる。
 
@@ -61,13 +63,13 @@ Pressable でホスティングする WordPress サイトの構築用テンプ�
 composer install
 composer lint        # composer lint:fix で自動修正
 
-# 独自ブロック
-cd wp-content/plugins/pressable-plugin
+# 独自ブロック（ビルド環境は blocks/、出力先はプラグインの build/）
+cd blocks
 nvm use && npm ci
 npm run build        # npm run start でウォッチ
 npm run lint:js
 
-# .deployignore がテーマ・プラグインの全ファイルを戻しているか（直下にファイルを足したとき。リポジトリ直下）
+# テーマ・プラグインが .deployignore で戻されていて、中に開発用ファイルが無いか（リポジトリ直下）
 bash bin/check-deployignore.sh
 ```
 
@@ -81,7 +83,7 @@ python3 -I .claude/skills/rename-site/scripts/test_rename.py
 
 ## ローカル環境（WordPress Studio）
 
-- このリポジトリのルートが Studio のサイトのフォルダ。WordPress 本体・データベース（SQLite）・uploads・WooCommerce などのプラグイン・Studio の `AGENTS.md` / `STUDIO.md` も同じフォルダにあるが、`.gitignore` の許可リストで Git の管理から外している。**ルートにファイルを追加するとき、別のテーマ・プラグインをリポジトリに入れるときは、`.gitignore` と `.deployignore` の両方に `!` の行を足す。**
+- このリポジトリのルートが Studio のサイトのフォルダ。WordPress 本体・データベース（SQLite）・uploads・WooCommerce などのプラグイン・Studio の `AGENTS.md` / `STUDIO.md` も同じフォルダにあるが、`.gitignore` の許可リストで Git の管理から外している。**ルートにファイルやフォルダを追加するとき（`.gitignore` に `!` の行を足す）、別のテーマ・プラグインをリポジトリに入れるとき（`.gitignore` と `.deployignore` の両方に `!` の行を足す）を忘れない。**
 - WP-CLI は素の `wp` ではなく **`studio wp …`** をリポジトリのルートで実行する。URL とログイン情報は `studio status` で確認する（ポートは固定ではない）。
 - `bin/studio-prepare.sh`: PHP のバージョン・環境タイプ `local`・デバッグログを整え、テーマとプラグインを有効化する。リネームの後、Studio アプリで pull した後に実行する（何度実行してもよい）。
 - 本番のコンテンツの取り込みは **`bin/studio-pull.sh` だけ** で行う（データベースと uploads だけを pull する）。テーマ・プラグインを含む pull は、未コミットの作業を本番の版で上書きするので行わない。pull 元はスクリプト内の `PULL_FROM`（未設定なら `--remote-site` で指定）。どちらも無いと Studio がアカウントの全サイトから選ばせるので、Claude が実行するときは必ず pull 元を明示する。
