@@ -1,4 +1,12 @@
-# CLAUDE.md — Pressable Plugin 開発ガイド
+---
+paths:
+  - "wp-content/plugins/pressable-plugin/**"
+  - "blocks/**"
+---
+
+# Pressable Plugin 開発ガイド
+
+プラグイン（`wp-content/plugins/pressable-plugin/`）と、その独自ブロックのソース（`blocks/`）を読み書きするときに Claude Code が読み込むガイドです。プラグインのフォルダは本番にそのままデプロイされるので、このガイドとブロックのビルド環境はプラグインの外に置いています。
 
 サイト固有の **機能** をまとめたプラグインです。見た目は `wp-content/themes/pressable-theme` が担当します（役割分担はリポジトリ直下の CLAUDE.md を参照）。
 
@@ -7,18 +15,21 @@
 - WordPress 6.8+（`wp_register_block_types_from_metadata_collection()` を使うため）/ PHP 8.1+
 - プラグインスラッグ / Text Domain: `pressable-plugin`
 - ブロック名の名前空間: `pressable-plugin/`
-- 独自ブロックのビルド: `@wordpress/scripts`（Node は `.nvmrc` のバージョン）
+- 独自ブロックのビルド: `@wordpress/scripts`。ビルド環境はリポジトリ直下の `blocks/`（`package.json`・`.nvmrc`・`src/`）。ビルドの出力先はプラグインの `build/`
 
 ```bash
+cd blocks
 nvm use
 npm ci
-npm run build    # src/ → build/（--webpack-copy-php で render.php も、--blocks-manifest で blocks-manifest.php も生成）
+npm run build    # blocks/src/ → プラグインの build/（--webpack-copy-php で render.php も、--blocks-manifest で blocks-manifest.php も生成）
 npm run start    # 開発ウォッチ
 npm run lint:js  # ESLint
 npm run format   # Prettier
 ```
 
-`build/` は **コミット対象**。Pressable はデプロイ時にビルドしないため、`src/` を変更したら必ず `npm run build` して build/ も一緒にコミットする（CI が build/ の更新漏れを検出する）。
+`build/` は **コミット対象**。Pressable はデプロイ時にビルドしないため、`blocks/src/` を変更したら必ず `npm run build` して build/ も一緒にコミットする（CI が build/ の更新漏れを検出する）。
+
+プラグインのフォルダは丸ごと本番にデプロイされる。**本番で使わないファイル（説明の Markdown・ソース・`package.json` などの設定ファイル）をプラグインのフォルダに置かない**（Pressable では、`!` で戻したフォルダの中を `.deployignore` で除外できないため）。置いた場合は CI の `bin/check-deployignore.sh` が検出する。
 
 ## ディレクトリ構成
 
@@ -28,14 +39,16 @@ pressable-plugin/
 ├── includes/
 │   ├── blocks.php         # build/ の独自ブロックを一括登録
 │   └── woocommerce.php    # WooCommerce 関連（HPOS・カート/チェックアウトブロックの互換宣言など）
+└── build/                 # ビルド成果物（コミット対象。blocks/ の npm run build で作る）
+
+blocks/                    # リポジトリ直下。デプロイしない
 ├── src/<ブロック名>/      # 独自ブロックのソース（block.json / index.js / edit.js / render.php）
-├── build/                 # ビルド成果物（コミット対象）
-├── package.json / package-lock.json / .nvmrc
+└── package.json / package-lock.json / .nvmrc
 ```
 
 ## 独自ブロック
 
-- `src/<ブロック名>/block.json` を置けば `npm run build` が自動で拾い、`build/blocks-manifest.php` に載る。PHP 側の登録コードを足す必要はない。
+- `blocks/src/<ブロック名>/block.json` を置けば `npm run build` が自動で拾い、`build/blocks-manifest.php` に載る。PHP 側の登録コードを足す必要はない。
 - 表示はサーバーサイドレンダリング（`render.php`・`save: () => null`）を基本にする。エディターのプレビューは edit.js でクライアント側に組み立て、`render.php` と表示を揃える（`ServerSideRender` は非推奨の仕組みなので新規には使わない）。日付はブラウザーではなくサイトのタイムゾーンで求め（PHP の `wp_date()` ⇔ JS の `@wordpress/date` の `date()`）、入力値の正規化も `render.php` と同じにする（例: `absint()` ⇔ `Math.abs( Math.trunc() )`）。
 - `render.php` のローカル変数も WPCS の接頭辞ルールの対象になるので `$pressable_plugin_` を付ける。
 - `@wordpress/*` パッケージは実行時には WordPress 本体のスクリプトを使う（ビルドで外部化される）。import するパッケージは ESLint のために devDependencies に追加する。

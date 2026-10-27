@@ -1,4 +1,11 @@
-# CLAUDE.md — Pressable Theme 開発ガイド
+---
+paths:
+  - "wp-content/themes/pressable-theme/**"
+---
+
+# Pressable Theme 開発ガイド
+
+テーマ（`wp-content/themes/pressable-theme/`）のファイルを読み書きするときに Claude Code が読み込むガイドです。テーマのフォルダは本番にそのままデプロイされるので、このガイドはテーマの外（`.claude/rules/`）に置いています。
 
 Pressable で構築するサイト用の **WordPress ブロックテーマ（FSE）** です。見た目（デザイントークン・テンプレート・パターン・CSS）だけを担当し、機能は `wp-content/plugins/pressable-plugin` が担当します（役割分担はリポジトリ直下の CLAUDE.md を参照）。
 
@@ -22,6 +29,8 @@ pressable-theme/
 ├── patterns/            # トップ各セクション + 下層ページ雛形（PHP・カテゴリ "pressable-theme"）
 └── assets/css/theme.css # theme.json で書けない装飾（カード・お知らせ一覧・商品カード等）
 ```
+
+- テーマのフォルダは丸ごと本番にデプロイされる。**本番で使わないファイル（説明の Markdown・ソース・設定ファイルなど）をテーマのフォルダに置かない**（Pressable では、`!` で戻したフォルダの中を `.deployignore` で除外できないため）。置いた場合は CI の `bin/check-deployignore.sh` が検出する。
 
 ## デザイントークン（theme.json が正・ハードコード禁止）
 

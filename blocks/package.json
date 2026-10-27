@@ -5,8 +5,8 @@
 	"description": "Pressable Plugin の独自ブロックのビルド環境",
 	"license": "GPL-2.0-or-later",
 	"scripts": {
-		"build": "wp-scripts build --webpack-copy-php --blocks-manifest",
-		"start": "wp-scripts start --webpack-copy-php --blocks-manifest",
+		"build": "wp-scripts build --webpack-copy-php --blocks-manifest --output-path=../wp-content/plugins/pressable-plugin/build",
+		"start": "wp-scripts start --webpack-copy-php --blocks-manifest --output-path=../wp-content/plugins/pressable-plugin/build",
 		"lint:js": "wp-scripts lint-js src",
 		"format": "wp-scripts format src"
 	},

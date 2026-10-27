@@ -4,9 +4,10 @@
 
 	<file>wp-content/themes/pressable-theme</file>
 	<file>wp-content/plugins/pressable-plugin</file>
+	<file>blocks/src</file>
 	<file>wp-content/mu-plugins/local-mail-guard.php</file>
 
-	<!-- build/ is generated from src/ by npm run build. -->
+	<!-- build/ is generated from blocks/src/ by npm run build in blocks/. -->
 	<exclude-pattern>*/build/*</exclude-pattern>
 	<exclude-pattern>*/node_modules/*</exclude-pattern>
 	<exclude-pattern>*/vendor/*</exclude-pattern>

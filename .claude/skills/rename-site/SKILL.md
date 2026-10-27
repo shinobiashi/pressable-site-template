@@ -58,10 +58,10 @@ description: このリポジトリ（Pressable サイトテンプレート）の
 
 3. **適用する。** 同じコマンドを `--dry-run` なしで実行する。最後に古い名前の残り・JSON・PHP 構文を自動でチェックし、問題があれば終了コード 2 で一覧を出す。その場合は内容を確認して直す。
 
-4. **ブロックを再ビルドし、JS の lint を実行する。** build/ の中身はテキスト置換済みで動くが、`index.asset.php` のバージョンハッシュが古いままで、CI の「build/ の更新漏れチェック」で落ちる。再ビルドが必要。また、Text Domain の長さが変わると Prettier の折り返し位置が変わり（`__( '…', '<スラッグ>' )` が 1 行に収まるようになる、など）、CI の `lint:js` で落ちることがある。エラーが出たら `npx wp-scripts lint-js src --fix` で直す（整形だけなので build/ の出力は変わらない）。
+4. **ブロックを再ビルドし、JS の lint を実行する。** build/ の中身はテキスト置換済みで動くが、`index.asset.php` のバージョンハッシュが古いままで、CI の「build/ の更新漏れチェック」で落ちる。再ビルドが必要。また、Text Domain の長さが変わると Prettier の折り返し位置が変わり（`__( '…', '<スラッグ>' )` が 1 行に収まるようになる、など）、CI の `lint:js` で落ちることがある。エラーが出たら `blocks/` で `npx wp-scripts lint-js src --fix` を実行して直す（整形だけなので build/ の出力は変わらない）。
 
    ```bash
-   cd wp-content/plugins/<新しいプラグインスラッグ>
+   cd blocks   # ブロックのビルド環境。出力先はプラグインの build/
    nvm use && npm ci && npm run build && npm run lint:js
    ```
 
@@ -104,15 +104,15 @@ python3 -I ~/Dev/pressable-site-template/.claude/skills/rename-site/scripts/rena
 ## スクリプトが変更するもの
 
 - テーマ・プラグインのディレクトリ名と、プラグインのメインファイル名（git で管理されていれば `git mv`）
-- スラッグ（`sample-store`）・PHP 接頭辞（`sample_store`）・定数接頭辞（`SAMPLE_STORE`）が現れる、Git 管理下のすべてのテキストファイル。Text Domain、`@package`、パターンのスラッグとカテゴリ、CSS クラス（`<テーマスラッグ>-card` など）、ブロック名、`.gitignore`・`.deployignore` の許可リスト、`.phpcs.xml.dist`、CI のパス、`bin/studio-*.sh`、各 CLAUDE.md・README.md、build/、package.json / package-lock.json が該当する
-- 名前が書かれた決まった行: `Theme Name`・`Plugin Name`・各説明文のサイト名・functions.php と theme.css の先頭・各 CLAUDE.md の見出し・package.json の description・README.md の見出しと冒頭
+- スラッグ（`sample-store`）・PHP 接頭辞（`sample_store`）・定数接頭辞（`SAMPLE_STORE`）が現れる、Git 管理下のすべてのテキストファイル。Text Domain、`@package`、パターンのスラッグとカテゴリ、CSS クラス（`<テーマスラッグ>-card` など）、ブロック名、`.gitignore`・`.deployignore` の許可リスト、`.phpcs.xml.dist`、CI のパス、`bin/studio-*.sh`、CLAUDE.md・`.claude/rules/` の開発ガイド・README.md、build/、`blocks/` の package.json / package-lock.json が該当する
+- 名前が書かれた決まった行: `Theme Name`・`Plugin Name`・各説明文のサイト名・functions.php と theme.css の先頭・テーマとプラグインの開発ガイド（`.claude/rules/theme.md`・`plugin.md`）の見出し・`blocks/package.json` の description・README.md の見出しと冒頭
 - `--remove-skill` のとき: `.claude/skills/rename-site/` と `docs/reviews/`（中が空になった親ディレクトリも消す）、Git 管理下のファイルの `rename-site:start` / `rename-site:end` で囲んだ範囲、`docs/review-backlog.md` の表の中身（見出しと区切り行は残す）。対象は `rename.py` の `TEMPLATE_ONLY_DIRS` と `TABLE_HEADER_ONLY`
 
 ## 変更しないもの
 
 - `composer.json` の `name`（変えると composer.lock のハッシュがずれるため）と `.phpcs.xml.dist` の ruleset 名
 - README.md の「新しいサイトを始める」にあるテンプレートリポジトリ名
-- パターンの文言やフッターの住所など、案件ごとに手で書き換えるプレースホルダー（テーマの CLAUDE.md の「新しいサイトで最初に置き換える箇所」を参照）
+- パターンの文言やフッターの住所など、案件ごとに手で書き換えるプレースホルダー（テーマの開発ガイド `.claude/rules/theme.md` の「新しいサイトで最初に置き換える箇所」を参照）
 - Git が管理していないファイル（同じフォルダにある WordPress 本体・uploads・他のプラグインやテーマ・Studio のファイル）と、データベース・本番サーバー
 
 ## スクリプトを変更するとき

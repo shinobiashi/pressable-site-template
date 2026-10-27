@@ -12,6 +12,17 @@
 #
 # When you commit another theme or plugin to this repository, add a "!" line for
 # it in the matching block below.
+#
+# The theme and the plugin are deployed as whole folders, so keep development
+# files (guides, block sources, package.json, ...) OUT of them. Seen on 2026-10-27
+# on a site made from this template: CLAUDE.md, src/ and package-lock.json inside
+# the theme and plugin reached production although lines in this file excluded
+# them, and a sandbox deploy of a branch did not follow that branch's changes to
+# this file. So this file is not relied on for anything inside
+# wp-content/themes/<slug>/ or wp-content/plugins/<slug>/: the block build
+# environment lives in blocks/ and the theme / plugin guides in .claude/rules/.
+# CI checks that no development file is tracked inside the theme or the plugin
+# (bin/check-deployignore.sh).
 
 # ---- Allowlist: deploy only our theme and plugin ----
 # Everything directly under the site root except wp-content/.
@@ -33,7 +44,9 @@ wp-content/plugins/*
 
 # ---- Development files (never deployed) ----
 # Repository root files are already covered by "/*"; they are listed again so
-# they are not published even if "/*" is not supported.
+# they are not published even if "/*" is not supported. These lines do not keep
+# files inside the theme or the plugin out (see the top of this file). .DS_Store
+# and *.log never reach the repository (.gitignore), so they are not deployed.
 .DS_Store
 **/*.log
 .claude/
@@ -45,11 +58,7 @@ wp-content/plugins/*
 CLAUDE.md
 README.md
 bin/*
+blocks/
 composer.json
 composer.lock
 docs/
-node_modules/
-package.json
-package-lock.json
-.nvmrc
-wp-content/plugins/pressable-plugin/src/

@@ -97,8 +97,21 @@ class RenameScenarios(unittest.TestCase):
         self.assertIn("Theme Name: Sample Store\n", self.read("wp-content/themes/sample-store/style.css"))
         self.assertIn("!/wp-content/plugins/sample-store-functions/", self.read(".gitignore"))
         self.assertIn("!wp-content/plugins/sample-store-functions/", self.read(".deployignore"))
+        self.assertTrue(self.read(".claude/rules/theme.md").count("\n# Sample Store 開発ガイド\n") == 1)
+        self.assertIn('"wp-content/themes/sample-store/**"', self.read(".claude/rules/theme.md"))
+        self.assertTrue(self.read(".claude/rules/plugin.md").count("\n# Sample Store Functions 開発ガイド\n") == 1)
+        self.assertIn('"wp-content/plugins/sample-store-functions/**"', self.read(".claude/rules/plugin.md"))
+        package = self.read("blocks/package.json")
+        self.assertIn('"description": "Sample Store Functions の独自ブロックのビルド環境"', package)
+        self.assertIn("--output-path=../wp-content/plugins/sample-store-functions/build", package)
         self.assertIn("wp:sample-store-functions/copyright", self.read("wp-content/themes/sample-store/parts/footer.html"))
         self.assertTrue(self.read("README.md").startswith("# サンプル商店\n"))
+
+        # The deploy allowlist inside the renamed theme and plugin still covers every tracked file.
+        self.commit("rename")
+        check = subprocess.run(["bash", "bin/check-deployignore.sh"], cwd=self.repo, capture_output=True, text=True)
+        self.assert_ok(check)
+        self.assertIn("2 theme(s)/plugin(s)", check.stdout)
 
     def test_partial_rename_keeps_unchanged_slug_that_contains_the_renamed_one(self) -> None:
         # The recommended pairing: the plugin slug starts with the theme slug.
@@ -208,7 +221,12 @@ class RenameScenarios(unittest.TestCase):
         workflow = self.read(".github/workflows/lint.yml")
         self.assertNotIn("rename-skill", workflow)
         self.assertIn("\n  phpcs:\n", workflow)
-        self.assertIn("\n      - run: composer lint\n\n  blocks:\n", workflow)
+        # The job just before the removed one is kept, and the next job follows it directly.
+        self.assertIn("\n      - run: bash bin/check-deployignore.sh\n\n  blocks:\n", workflow)
+        # The site's .deployignore check still passes without the skill.
+        self.commit("remove the skill")
+        check = subprocess.run(["bash", "bin/check-deployignore.sh"], cwd=self.repo, capture_output=True, text=True)
+        self.assert_ok(check)
         self.assertNotIn("test_rename.py", self.read("CLAUDE.md") + self.read("README.md"))
         self.assertNotIn("## サイト名・テーマ・プラグインの名前を変更する", self.read("README.md"))
         self.assertIn("（スキルは最後に、このリポジトリから自分自身を削除します）", self.read("README.md"))

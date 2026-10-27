@@ -6,6 +6,7 @@
 /*
 !/.claude/
 /.claude/*
+!/.claude/rules/
 !/.claude/skills/
 /.claude/skills/*
 # rename-site:start
@@ -14,6 +15,7 @@
 # rename-site:end
 !/.github/
 !/bin/
+!/blocks/
 !/docs/
 !/.deployignore
 !/.editorconfig
