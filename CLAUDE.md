@@ -49,6 +49,7 @@ Pressable でホスティングする WordPress サイトの構築用テンプ�
 - Pressable の設定: **Repository Subdirectory・Destination Path とも空欄**（リポジトリのルート = `/htdocs`）。`.deployignore` はこの前提で書いてある。設定を変える場合は `.deployignore` のパスも見直す。
 - Pressable のデプロイは **Sync-As-Is**: デプロイ先にあってリポジトリに無いファイルは **削除される**。自動で保護されるのは WordPress 本体・uploads・wp-config.php・一部の管理プラグインなどだけ。
 - `.deployignore` に一致したパスはデプロイも削除もされない。これを利用して **許可リスト方式**（`/*` で全体を対象外にし、`!` でテーマとプラグインだけを戻す）にしてあり、WooCommerce など管理画面から入れたプラグイン、`languages/`、`mu-plugins/` を守っている。
+- **本番に一度届いたファイルは、リポジトリから消しても削除されないことがある。** 2026-10-27 のサンドボックスでは、テーマ・プラグインから外へ移した `CLAUDE.md`・`src/`・`package-lock.json` が、デプロイの後も残った（`.deployignore` の行に一致して守られたためと考えられる）。テーマ・プラグインのファイルを移す・消すときは、デプロイの後にサーバーを確かめ、残ったものは SFTP / SSH で手で消す。
 - **テーマとプラグインのフォルダは丸ごとデプロイされる。中に開発用のファイル（説明の Markdown・ブロックのソース・`package.json`・`.nvmrc` など）を置かない。** 2026-10-27 に、このテンプレートから作った案件サイトの本番に、`.deployignore` で除外していたテーマとプラグインの `CLAUDE.md`・`src/`・`package-lock.json` が届いていた。サンドボックスで試すと、ブランチの `.deployignore` を変えてもデプロイされるものは変わらず、Pressable がどの `.deployignore` をいつ読むのかも分からなかった。そこで、テーマとプラグインの中は `.deployignore` に頼らず、開発用のファイルを外に置く（ブロックのビルド環境は `blocks/`、ガイドは `.claude/rules/`）。CI の `bin/check-deployignore.sh` が、中に置かれた開発用のファイルを検出する。
 - **リポジトリに無いものを `!` で戻さない。** 本番に同じ名前のファイルがあると、守られなくなって Sync-As-Is で削除される（`bin/check-deployignore.sh` が検出する）。
 - **リポジトリに別のテーマ・プラグインを追加したら `.deployignore` に `!` の行を足す**（足さないと本番に届かない。CI が検出する）。
