@@ -27,7 +27,6 @@ flowchart LR
 
 ```text
 .
-├── .claude/skills/rename-site/  # サイト名・テーマ・プラグインの名前を一括変更するスキル
 ├── .deployignore          # Pressable のデプロイ対象（テーマとプラグインだけをデプロイする許可リスト）
 ├── .github/workflows/     # CI（PHPCS・JS Lint・build/ の更新漏れチェック）
 ├── .gitignore             # Git で管理するファイルの許可リスト（Studio サイトの他のファイルは無視）
@@ -43,6 +42,10 @@ flowchart LR
     ├── plugins/pressable-plugin/
     └── mu-plugins/local-mail-guard.php  # ローカルでだけメール送信を止める（本番にはデプロイしない）
 ```
+
+<!-- rename-site:start -->
+テンプレートには、このほかに `.claude/skills/rename-site/`（サイト名・テーマ・プラグインの名前を一括変更するスキル）があります。新しいサイトのリポジトリでは、名前を変えた最後に削除します（下記「サイト名・テーマ・プラグインの名前を変更する」）。
+<!-- rename-site:end -->
 
 ## 前提
 
@@ -69,7 +72,7 @@ flowchart LR
 
    `-f` は、Studio が作った `CLAUDE.md`（中身は `@AGENTS.md` の 1 行）をリポジトリのもので置き換えるためです。それ以外の WordPress・Studio のファイルは `.gitignore` で無視されるので、`git status` には何も出ません。
 
-4. **名前を案件用に変える。** このフォルダで Claude Code を起動し、rename-site スキルでサイト名・テーマ・プラグインの名前を変えます（下記「サイト名・テーマ・プラグインの名前を変更する」）。スキルの最後で `bin/studio-prepare.sh` が実行され、ローカルでテーマとプラグインが有効になります。
+4. **名前を案件用に変える。** このフォルダで Claude Code を起動し、rename-site スキルでサイト名・テーマ・プラグインの名前を変えます（<!-- rename-site:start -->下記「サイト名・テーマ・プラグインの名前を変更する」。<!-- rename-site:end -->スキルは最後に、このリポジトリから自分自身を削除します）。スキルの最後で `bin/studio-prepare.sh` が実行され、ローカルでテーマとプラグインが有効になります。
 
 5. **pull 元を設定する。** `bin/studio-pull.sh` の `PULL_FROM` に、本番（またはステージング）の URL を設定します（例: `PULL_FROM="https://example.com"`）。
 
@@ -77,9 +80,12 @@ flowchart LR
 
 7. **中身を差し替える。** テーマは `wp-content/themes/pressable-theme/CLAUDE.md` の「新しいサイトで最初に置き換える箇所」を参照し、機能は `wp-content/plugins/pressable-plugin/` に追加します。
 
+<!-- rename-site:start -->
 ## サイト名・テーマ・プラグインの名前を変更する（rename-site スキル）
 
 テンプレートのままのサイト名・テーマ・プラグインの名前を、案件の名前に一括で変更する Claude Code のスキルです（`.claude/skills/rename-site/`）。このリポジトリで Claude Code を起動すると使えます。
+
+スキルの置き場所はテンプレートだけです。新しいサイトのリポジトリでは名前を変えた最後に、スキルと、この節のようなテンプレート用の記述を削除します（下記「使った後のスキルの削除」）。
 
 ### 使うタイミング
 
@@ -105,6 +111,7 @@ Claude Code で、サイト名・テーマ名とスラッグ・プラグイン�
 3. 古い名前の残り・JSON・PHP 構文の自動チェック
 4. ブロックの再ビルド（`npm run build`）、JS の lint（`npm run lint:js`）、PHPCS
 5. `bin/studio-prepare.sh` で新しいテーマ・プラグインを有効化
+6. このスキルをリポジトリから削除（下記「使った後のスキルの削除」）
 
 コミットはしないので、差分を確認してからコミットしてください。
 
@@ -133,11 +140,42 @@ python3 -I .claude/skills/rename-site/scripts/rename.py \
   --dry-run
 ```
 
-実行後は次の 3 つを行ってください。
+実行後は次の 4 つを行ってください。
 
 1. プラグインのディレクトリで `npm ci && npm run build && npm run lint:js`（build/ の作り直しと、整形の確認。lint のエラーは `npx wp-scripts lint-js src --fix` で直る）
 2. リポジトリのルートで `composer lint`
 3. `bin/studio-prepare.sh`
+4. リポジトリのルートで `python3 -I .claude/skills/rename-site/scripts/rename.py --remove-skill`（このスキルの削除。先に `--dry-run` を付けて確認できる）
+
+### 使った後のスキルの削除
+
+名前を変えるのはリポジトリを作った直後の 1 回だけなので、サイトのリポジトリにはスキルを残しません。残すと案件ごとに古い版のスキルが増え、テンプレートで直した内容が届きません。`rename.py --remove-skill` は次のものを削除します。
+
+- `.claude/skills/rename-site/`（スキル本体）
+- `.gitignore` の `!/.claude/skills/rename-site/` の行と、CI（`.github/workflows/lint.yml`）のスキルのテストのジョブ
+- README.md・CLAUDE.md の、テンプレートにだけ必要な記述（この節など）
+- `docs/reviews/`（テンプレート自身のレビュー記録）
+- `docs/review-backlog.md` の中身（テンプレートで後回しにした指摘。表の見出しだけを残し、案件のレビューで追記できるようにする）
+
+`docs/review-baseline.md`（レビューで許容した書き方）は残します。案件も同じコードを受け継ぐので、案件のレビューでもそのまま有効です。テンプレートで後回しにした指摘は、テンプレートで直します（これから作る案件にはそのまま入ります）。
+
+削除する範囲は、各ファイルで `rename-site:start` と `rename-site:end` のコメントで囲んであります。テンプレートにだけ必要な記述を足すときは、同じように囲んでください。
+
+テンプレート自身（origin が pressable-site-template のリポジトリ）では、名前の変更もスキルの削除も実行されません。
+
+### 削除した後に名前を変える場合
+
+公開後は名前を変えない前提ですが、どうしても必要なときは、手元のテンプレートのスクリプトを `--repo` でサイトのリポジトリを指定して実行します（テンプレートは先に `git pull` で最新にしておきます）。
+
+```bash
+cd ~/Studio/<サイトのフォルダ>
+python3 -I ~/Dev/pressable-site-template/.claude/skills/rename-site/scripts/rename.py --repo . \
+  --site-name "サンプル商店" \
+  --theme-name "Sample Store" --theme-slug sample-store \
+  --plugin-name "Sample Store Functions" --plugin-slug sample-store-functions \
+  --dry-run
+```
+<!-- rename-site:end -->
 
 ## ローカル開発（WordPress Studio）
 
@@ -207,7 +245,7 @@ npm run build            # src/ → build/。開発中は npm run start
 npm run lint:js
 ```
 
-Pressable はデプロイ時にビルドしないため、**`build/` はコミットします**。CI（`.github/workflows/lint.yml`）が PHPCS・ESLint・build/ の更新漏れ・rename-site スキルのシナリオテスト（`python3 -I .claude/skills/rename-site/scripts/test_rename.py`）をチェックします。
+Pressable はデプロイ時にビルドしないため、**`build/` はコミットします**。CI（`.github/workflows/lint.yml`）が PHPCS・ESLint・build/ の更新漏れをチェックします。<!-- rename-site:start -->テンプレートでは、rename-site スキルのシナリオテスト（`python3 -I .claude/skills/rename-site/scripts/test_rename.py`）も実行します。<!-- rename-site:end -->
 
 ## Pressable へのデプロイ設定
 

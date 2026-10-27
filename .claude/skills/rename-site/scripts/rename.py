@@ -14,6 +14,16 @@ repository in a single pass. Display names are only rewritten on the specific li
 that carry them, so a generic name never touches unrelated text. Without --dry-run the
 files are rewritten and the theme/plugin directories are renamed (`git mv` when tracked).
 Nothing outside the repository is modified.
+
+The skill only lives in the template. After the rename, a new site's repository removes it:
+
+    python3 -I .claude/skills/rename-site/scripts/rename.py --remove-skill --dry-run
+
+This deletes the skill directory, the template's own review records (docs/reviews/) and every
+block that only the template needs, marked with `<!-- rename-site:start -->` ...
+`<!-- rename-site:end -->` (`# rename-site:start` ... `# rename-site:end` in YAML and
+.gitignore), and empties the template's review backlog down to its table header. To rename
+such a repository later, run the template's copy of this script with `--repo <site repository>`.
 """
 
 from __future__ import annotations
@@ -29,6 +39,33 @@ from pathlib import Path
 
 SKILL_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_REPO = Path(__file__).resolve().parents[4]
+SKILL_REL = Path(".claude") / "skills" / "rename-site"
+TEMPLATE_NAME = "pressable-site-template"
+# What --remove-skill deletes as a whole, and files that only keep their table header
+# (the template's own entries mean nothing in a site; the site's reviews append to the table).
+TEMPLATE_ONLY_DIRS = {SKILL_REL: "このスキル", Path("docs") / "reviews": "テンプレートのレビュー記録"}
+TABLE_HEADER_ONLY = {Path("docs") / "review-backlog.md": "テンプレートで後回しにした指摘"}
+TABLE_SEPARATOR_RE = re.compile(r"^\|(?:[ \t]*:?-+:?[ \t]*\|)+[ \t]*$", re.M)
+
+# Template-only blocks. A block marker stands alone on its line; an inline marker pair wraps
+# text within one line. The blank line after a block goes with it, so no gap is left behind.
+# Neither kind spans another marker, and a block ends with the comment syntax it starts with,
+# so a stray or mismatched marker is left over (and reported) instead of widening the removal.
+MARKER_SYNTAXES = (("<!-- ", " -->"), ("# ", ""))  # Markdown; YAML and .gitignore
+NOT_A_MARKER = "(?!{})".format(
+    "|".join(rf"{re.escape(head)}rename-site:(?:start|end){re.escape(tail)}" for head, tail in MARKER_SYNTAXES)
+)
+MARKER_BLOCK_RE = re.compile(
+    "|".join(
+        rf"^[ \t]*{re.escape(head)}rename-site:start{re.escape(tail)}[ \t]*\n"
+        rf"(?:{NOT_A_MARKER}.)*?"
+        rf"^[ \t]*{re.escape(head)}rename-site:end{re.escape(tail)}[ \t]*(?:\n|\Z)(?:[ \t]*\n)?"
+        for head, tail in MARKER_SYNTAXES
+    ),
+    re.M | re.S,
+)
+MARKER_INLINE_RE = re.compile(rf" ?<!-- rename-site:start -->(?:{NOT_A_MARKER}[^\n])*?<!-- rename-site:end -->")
+MARKER_RE = re.compile(r"rename-site:(?:start|end)")
 
 SLUG_RE = re.compile(r"^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$")
 # Names are written into PHP/CSS comments, JSON strings and a shell variable.
@@ -100,15 +137,34 @@ def git_files(repo: Path) -> set[Path]:
 
 
 def iter_repo_files(repo: Path):
+    # The skill running this script, and the repository's own copy when run with --repo.
+    skill_dirs = {SKILL_DIR, (repo / SKILL_REL).resolve()}
     for path in sorted(git_files(repo)):
         rel_parts = path.relative_to(repo).parts
         if any(part in SKIP_DIR_NAMES for part in rel_parts):
             continue
         if path.is_symlink() or not path.is_file():
             continue
-        if SKILL_DIR in path.resolve().parents:
+        if skill_dirs & set(path.resolve().parents):
             continue
         yield path
+
+
+def is_template(repo: Path) -> bool:
+    """The template itself (origin is pressable-site-template), not a site created from it."""
+    result = subprocess.run(["git", "-C", str(repo), "remote", "get-url", "origin"], capture_output=True, text=True)
+    if result.returncode != 0:
+        return False
+    name = re.split(r"[/:]", result.stdout.strip().rstrip("/"))[-1]
+    return re.sub(r"\.git$", "", name) == TEMPLATE_NAME
+
+
+def readme_heading(repo: Path) -> str | None:
+    readme = repo / "README.md"
+    if not readme.is_file():
+        return None
+    match = re.match(r"# (.+)", readme.read_text(encoding="utf-8"))
+    return match.group(1).strip() if match else None
 
 
 def find_headers(repo: Path, kind: str, main_file, header_re: str) -> list[tuple[str, str]]:
@@ -152,12 +208,8 @@ def pick(found: list[tuple[str, str]], wanted: str | None, kind: str, flag: str)
 def detect_current(repo: Path, args: argparse.Namespace) -> Identity:
     theme_slug, theme_name = pick(find_themes(repo), args.from_theme_slug, "テーマ", "--from-theme-slug")
     plugin_slug, plugin_name = pick(find_plugins(repo), args.from_plugin_slug, "プラグイン", "--from-plugin-slug")
-    site_name = None
-    readme = repo / "README.md"
-    if readme.is_file():
-        match = re.match(r"# (.+)", readme.read_text(encoding="utf-8"))
-        if match and match.group(1).strip() != "pressable-site-template":
-            site_name = match.group(1).strip()
+    heading = readme_heading(repo)
+    site_name = heading if heading != TEMPLATE_NAME else None
     return Identity(site_name, theme_name, theme_slug, plugin_name, plugin_slug)
 
 
@@ -380,23 +432,153 @@ def studio_notes(repo: Path) -> list[str]:
     ]
 
 
+def strip_markers(text: str) -> str:
+    new_text = MARKER_INLINE_RE.sub("", MARKER_BLOCK_RE.sub("", text))
+    if new_text != text and text.endswith("\n"):
+        # A block at the end of the file would otherwise leave a trailing blank line.
+        new_text = new_text.rstrip("\n") + "\n"
+    return new_text
+
+
+def table_header_only(text: str) -> str | None:
+    """The text up to the first table's separator row, or None when there is no table."""
+    match = TABLE_SEPARATOR_RE.search(text)
+    return text[: match.end()] + "\n" if match else None
+
+
+def removal_plan(repo: Path) -> tuple[list[Path], dict[Path, tuple[str, str]], list[str]]:
+    """The directories to delete, the files to rewrite and notes on what is left as is."""
+    if is_template(repo):
+        raise RenameError(f"{repo} はテンプレート（{TEMPLATE_NAME}）自身です。スキルはテンプレートに置いておくので、削除しません。")
+    if readme_heading(repo) == TEMPLATE_NAME:
+        raise RenameError("まだ名前を変えていません（README.md の見出しがテンプレートのまま）。名前を変えてから削除してください。")
+    dirs = [repo / rel for rel in TEMPLATE_ONLY_DIRS if (repo / rel).is_dir()]
+    deleted = {path.resolve() for path in dirs}
+    contents, notes = {}, []
+    for path in dirs:
+        # Usually the rename itself, which is not committed yet when the skill runs this step.
+        status = subprocess.run(["git", "-C", str(repo), "status", "--porcelain", "--", str(path.relative_to(repo))],
+                                capture_output=True, text=True)
+        if status.stdout.strip():
+            notes.append(f"{path.relative_to(repo)}/ に未コミットの変更があります（リネームによる置換を含む）。"
+                         "ディレクトリごと削除するので、その変更も消えます")
+    for path in iter_repo_files(repo):
+        if deleted & set(path.resolve().parents):
+            continue
+        text = read_text(path)
+        if text is None:
+            continue
+        rel = path.relative_to(repo)
+        new_text = text
+        if MARKER_RE.search(text):
+            new_text = strip_markers(text)
+            if MARKER_RE.search(new_text):
+                raise RenameError(f"{rel} の rename-site:start と rename-site:end の対応が取れていません。")
+        if rel in TABLE_HEADER_ONLY:
+            header = table_header_only(new_text)
+            if header is None:
+                notes.append(f"{rel} に表が見つからないため、中身を残します（手で直されている可能性）")
+            else:
+                new_text = header
+        if new_text != text:
+            contents[path] = (text, new_text)
+    return dirs, contents, notes
+
+
+def apply_removal(repo: Path, dirs: list[Path], contents: dict[Path, tuple[str, str]]) -> None:
+    tracked = [str(path.relative_to(repo)) for path in dirs if is_git_tracked(repo, path)]
+    if tracked:
+        # -f: the directories go as a whole, including uncommitted changes (reported by removal_plan).
+        result = subprocess.run(["git", "-C", str(repo), "rm", "-r", "-q", "-f", "--", *tracked],
+                                capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RenameError(f"削除できませんでした（何も変更していません）: {result.stderr.strip()}")
+    for path in dirs:
+        if path.exists():
+            shutil.rmtree(path)  # Untracked leftovers such as __pycache__/.
+        parent = path.parent
+        while parent != repo and parent.is_dir() and not any(parent.iterdir()):
+            parent.rmdir()
+            parent = parent.parent
+    for path, (_, new_text) in contents.items():
+        path.write_text(new_text, encoding="utf-8")
+
+
+def remove_skill(repo: Path, dry_run: bool) -> int:
+    try:
+        dirs, contents, notes = removal_plan(repo)
+    except RenameError as error:
+        print(f"エラー: {error}", file=sys.stderr)
+        return 1
+
+    print(f"リポジトリ: {repo}")
+    if not dirs and not contents:
+        print("削除するものはありません（スキルもテンプレート用の記述もありません）。")
+        return 0
+    print("削除・変更するもの:")
+    for path in dirs:
+        rel = path.relative_to(repo)
+        print(f"  {rel}/（{TEMPLATE_ONLY_DIRS[rel]}。ディレクトリごと削除）")
+    for path, (text, _) in sorted(contents.items()):
+        rel = path.relative_to(repo)
+        if rel in TABLE_HEADER_ONLY:
+            print(f"  {rel}（{TABLE_HEADER_ONLY[rel]}。表の見出しだけ残す）")
+            continue
+        count = len(MARKER_BLOCK_RE.findall(text)) + len(MARKER_INLINE_RE.findall(MARKER_BLOCK_RE.sub("", text)))
+        print(f"  {rel}（テンプレート用の記述 {count} か所）")
+    for note in notes:
+        print(f"\n注意: {note}")
+
+    if dry_run:
+        print("\n--dry-run のため、何も削除していません。")
+        return 0
+
+    try:
+        apply_removal(repo, dirs, contents)
+    except RenameError as error:
+        print(f"エラー: {error}", file=sys.stderr)
+        return 1
+    print("\n削除しました。")
+    print(f"名前をもう一度変えるときは、テンプレート（{TEMPLATE_NAME}）の {SKILL_REL / 'scripts' / 'rename.py'} を、"
+          "--repo でこのリポジトリのルートを指定して実行してください。")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="サイト名・テーマ・プラグインの名前を一括で変更する。")
-    parser.add_argument("--site-name", required=True, help="サイト名（例: サンプル商店）")
-    parser.add_argument("--theme-name", required=True, help="テーマ名（例: Sample Store）")
-    parser.add_argument("--theme-slug", required=True, help="テーマスラッグ（例: sample-store）")
-    parser.add_argument("--plugin-name", required=True, help="プラグイン名（例: Sample Store Functions）")
-    parser.add_argument("--plugin-slug", required=True, help="プラグインスラッグ（例: sample-store-functions）")
+    parser.add_argument("--site-name", help="サイト名（例: サンプル商店）")
+    parser.add_argument("--theme-name", help="テーマ名（例: Sample Store）")
+    parser.add_argument("--theme-slug", help="テーマスラッグ（例: sample-store）")
+    parser.add_argument("--plugin-name", help="プラグイン名（例: Sample Store Functions）")
+    parser.add_argument("--plugin-slug", help="プラグインスラッグ（例: sample-store-functions）")
     parser.add_argument("--from-theme-slug", help="変更元のテーマスラッグ（テーマが複数あるときだけ指定）")
     parser.add_argument("--from-plugin-slug", help="変更元のプラグインスラッグ（プラグインが複数あるときだけ指定）")
     parser.add_argument("--repo", type=Path, default=DEFAULT_REPO, help="リポジトリのルート（既定: このスクリプトの位置から算出）")
     parser.add_argument("--dry-run", action="store_true", help="変更内容を表示するだけで書き込まない")
+    parser.add_argument("--remove-skill", action="store_true",
+                        help="名前を変えた後に、このスキルとテンプレート用の記述をリポジトリから削除する")
     args = parser.parse_args()
 
     repo = args.repo.resolve()
+    name_args = ("site_name", "theme_name", "theme_slug", "plugin_name", "plugin_slug")
+    if args.remove_skill:
+        rename_args = (*name_args, "from_theme_slug", "from_plugin_slug")
+        given = [f"--{name.replace('_', '-')}" for name in rename_args if getattr(args, name) is not None]
+        if given:
+            parser.error(f"--remove-skill は名前を変える引数（{' '.join(given)}）と一緒に使えません。"
+                         "名前を変えてから、別に実行してください。")
+        return remove_skill(repo, args.dry_run)
+    missing = [f"--{name.replace('_', '-')}" for name in name_args if getattr(args, name) is None]
+    if missing:
+        parser.error(f"次の引数が必要です: {' '.join(missing)}")
     new = Identity(args.site_name.strip(), args.theme_name.strip(), args.theme_slug, args.plugin_name.strip(), args.plugin_slug)
 
     try:
+        if is_template(repo):
+            raise RenameError(
+                f"{repo} はテンプレート（{TEMPLATE_NAME}）自身なので、名前を変えません。"
+                "テンプレートから作ったサイトのリポジトリで実行するか、--repo でそのリポジトリを指定してください。"
+            )
         current = detect_current(repo, args)
         warnings = validate(new, current, repo)
         plan = build_plan(repo, current, new)
@@ -458,6 +640,8 @@ def main() -> int:
     print(f"  1. cd {plugin_rel} && nvm use && npm ci && npm run build && npm run lint:js   # build/ を作り直し、整形を確かめる")
     print("  2. composer lint   # リポジトリのルートで")
     print("  3. Studio サイトのフォルダなら bin/studio-prepare.sh を実行する（新しいスラッグで有効化）")
+    if (repo / SKILL_REL).is_dir():
+        print(f"  4. python3 -I {SKILL_REL / 'scripts' / 'rename.py'} --remove-skill   # このスキルをリポジトリから削除する")
     return 0
 
 

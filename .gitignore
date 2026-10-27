@@ -8,7 +8,10 @@
 /.claude/*
 !/.claude/skills/
 /.claude/skills/*
+# rename-site:start
+# Template only. rename.py --remove-skill deletes the skill (and these lines) from a new site's repository.
 !/.claude/skills/rename-site/
+# rename-site:end
 !/.github/
 !/bin/
 !/docs/
