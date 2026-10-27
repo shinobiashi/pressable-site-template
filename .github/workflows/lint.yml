@@ -25,6 +25,16 @@ jobs:
 
       - run: composer lint
 
+  deployignore:
+    name: .deployignore covers the theme and plugin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Pressable deploys only what .deployignore reopens, so a new file or folder
+      # directly under the theme or the plugin needs a "!" line there.
+      - run: bash bin/check-deployignore.sh
+
   # rename-site:start
   # Template only. rename.py --remove-skill deletes this job from a new site's repository.
   rename-skill:

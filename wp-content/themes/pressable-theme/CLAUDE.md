@@ -23,6 +23,8 @@ pressable-theme/
 └── assets/css/theme.css # theme.json で書けない装飾（カード・お知らせ一覧・商品カード等）
 ```
 
+- 本番にデプロイされるのは、リポジトリ直下の `.deployignore` で `!` の行があるものだけ（上の一覧。この CLAUDE.md は届かない）。テーマの直下にファイルやフォルダを足したら `.deployignore` に `!` の行を足す。`bash bin/check-deployignore.sh` が漏れを検出する。
+
 ## デザイントークン（theme.json が正・ハードコード禁止）
 
 | slug | 値 | 用途 |
@@ -70,7 +72,7 @@ pressable-theme/
 2. theme.json のパレット値（色の slug はそのまま）とフォント
 3. parts/footer.html の住所・電話、フッターのリンク先
 4. patterns/hero.php・features.php・cta.php の文言とリンク先（`/contact/`・`/company/` を前提にしている）
-5. screenshot.png（1200×900）を追加する
+5. screenshot.png（1200×900）を追加する（`.deployignore` に `!wp-content/themes/pressable-theme/screenshot.png` の行も足す）
 
 ## 導入時セットアップ（クライアント向けメモ）
 

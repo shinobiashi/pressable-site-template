@@ -28,10 +28,11 @@ flowchart LR
 ```text
 .
 ├── .deployignore          # Pressable のデプロイ対象（テーマとプラグインだけをデプロイする許可リスト）
-├── .github/workflows/     # CI（PHPCS・JS Lint・build/ の更新漏れチェック）
+├── .github/workflows/     # CI（PHPCS・JS Lint・build/ の更新漏れ・.deployignore のチェック）
 ├── .gitignore             # Git で管理するファイルの許可リスト（Studio サイトの他のファイルは無視）
 ├── .phpcs.xml.dist        # WordPress Coding Standards の設定
 ├── bin/
+│   ├── check-deployignore.sh  # テーマ・プラグインの全ファイルが .deployignore で戻されているかを確認
 │   ├── studio-prepare.sh  # ローカルサイトを開発用に整える（PHP・環境タイプ・有効化）
 │   └── studio-pull.sh     # 本番からデータベースと uploads だけを pull する
 ├── composer.json          # 開発ツール（PHPCS）
@@ -229,6 +230,7 @@ bin/studio-pull.sh --remote-site https://staging-xxxx.example.com  # 別の環�
 - **`studio delete` はフォルダごとゴミ箱に移す。** 既定ではサイトのフォルダ、つまりリポジトリごとゴミ箱に移します。Studio から外すだけなら `studio delete --no-files` を使います。
 - **本番のデータの扱いに注意する。** ローカルのデータベースには本番の顧客情報が入ります。PC の管理に注意してください。データベースのファイル（`wp-content/database/`）は `.gitignore` によりコミットされません。
 - **リポジトリに入れるファイルを増やすとき。** ルートにファイルを追加したり、別のテーマ・プラグインをリポジトリに入れたりする場合は、`.gitignore` と `.deployignore` の両方に `!` の行を追加します。
+- **テーマ・プラグインの直下にファイルやフォルダを足すとき。** `.deployignore` に `!` の行を追加します。テーマとプラグインの中は、動作に要るものだけを戻す許可リストになっているため、足さないと本番に届きません。後ろの行で除外していた CLAUDE.md や `src/` などの開発用ファイルが、このテンプレートから作ったサイトの本番に届いていたため（2026-10-27）、これらは「戻さない」ことで本番から外しています。リポジトリに無いファイルの `!` の行も足しません（本番に同じ名前のファイルがあると削除されるため）。漏れは `bash bin/check-deployignore.sh`（CI でも実行）で分かります。
 - **対応 OS。** `bin/` のスクリプトは macOS 向けです。
 
 ## 開発

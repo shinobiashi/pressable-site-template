@@ -44,6 +44,7 @@ pressable-plugin/
 ## 機能を追加するとき
 
 - 機能ごとに `includes/<機能名>.php` を作り、`pressable-plugin.php` から `require_once` する。
+- 本番にデプロイされるのは `pressable-plugin.php`・`includes/`・`build/` だけ（リポジトリ直下の `.deployignore`）。プラグインの直下にファイルやフォルダを足したら `.deployignore` に `!` の行を足す（足さないと本番に届かず、`require_once` が失敗する）。`bash bin/check-deployignore.sh` が漏れを検出する。
 - 関数・変数は `pressable_plugin_`、定数は `PRESSABLE_PLUGIN_` 接頭辞。出力はエスケープ、入力はサニタイズ、フォーム・Ajax・REST は nonce と権限を確認する。
 - WooCommerce のフックへの登録は `includes/woocommerce.php` に書く（WooCommerce が無効なら呼ばれない）。WordPress 本体のフックから WooCommerce の関数を呼ぶ場合だけ `function_exists()` で確認する。
 - 注文データを直接 SQL で扱う場合は HPOS（`wc_orders`）と投稿テーブルの両方に対応させる（`OrderUtil::custom_orders_table_usage_is_enabled()` で分岐）。
